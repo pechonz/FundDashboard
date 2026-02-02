@@ -408,7 +408,6 @@ with tab_pain:
             st.subheader("📉 Loss Probability (ความน่าจะเป็นขาดทุนช่วง Rolling 252 วัน)")
             st.dataframe(loss_df.round(2), use_container_width=True)
 
-# ================= PORTFOLIO TAB =================
 with tab_port:
     st.subheader(f"Portfolio Overview ({tf})")
 
@@ -546,8 +545,6 @@ with tab_port:
             edited_df.to_csv("transactions.csv", index=False)
             st.success("บันทึกแล้ว")
             st.rerun()
-        # ================= Transaction History =================
-        
 
 # ================= DIVERSIFICATION =================
 with tab_diver:
@@ -671,6 +668,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
