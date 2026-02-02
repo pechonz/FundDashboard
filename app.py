@@ -267,7 +267,7 @@ with tab_overview:
     st.dataframe(df_engine[metric_cols].round(2), use_container_width=True)
 
     st.subheader("📈 Fund NAV Curve")
-    df_plot = nav_df[nav_df["fund"].isin(dff)]
+    df_plot = nav_df[nav_df["fund"].isin(dff["fund"])]
     fig = px.line(
         df_plot,
         x="date",
@@ -279,7 +279,7 @@ with tab_overview:
 
     st.subheader("📉 Drawdown Curve")
     dd_all = []
-    for f in dff:
+    for f in dff["fund"]:
         fdf = nav_df[nav_df["fund"] == f].copy()
         fdf["cummax"] = fdf["nav"].cummax()
         fdf["drawdown"] = (fdf["nav"] / fdf["cummax"] - 1) * 100
@@ -298,7 +298,7 @@ with tab_overview:
     st.subheader("🔥 Buy / Overheat Zone")
     win = 60
     z_all = []
-    for f in dff:
+    for f in dff["fund"]:
         fdf = nav_df[nav_df["fund"] == f].copy()
         fdf["ma"] = fdf["nav"].rolling(win).mean()
         fdf["std"] = fdf["nav"].rolling(win).std()
@@ -687,6 +687,7 @@ Worst Rolling = ช่วงนรก
 Best Rolling = ช่วงฟิน  
 DD Duration = ทรมานกี่วัน
 """)
+
 
 
 
