@@ -492,8 +492,18 @@ with tab_port:
         st.divider()
 
         # ================= Transaction History =================
-        st.subheader("📜 ประวัติ")
-        st.dataframe(tx_df.sort_values("date", ascending=False))
+        st.subheader("✏️ แก้ไขรายการ Transaction")
+
+        edited_df = st.data_editor(
+            tx_df,
+            num_rows="dynamic",      # เพิ่ม/ลบแถวได้
+            use_container_width=True
+        )
+        
+        if st.button("💾 Save changes"):
+            edited_df.to_csv("transactions.csv", index=False)
+            st.success("บันทึกการแก้ไขเรียบร้อย")
+            st.rerun()
         # ----- show latest update of transaction.csv -----
         tx_file = "transactions.csv"
         if os.path.exists(tx_file):
@@ -687,6 +697,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
