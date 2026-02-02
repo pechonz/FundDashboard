@@ -493,7 +493,16 @@ with tab_port:
         # ================= Transaction History =================
         st.subheader("📜 ประวัติ")
         st.dataframe(tx_df.sort_values("date", ascending=False))
-
+        # ----- show latest update of transaction.csv -----
+        tx_file = "transactions.csv"
+        if os.path.exists(tx_file):
+            ts = os.path.getmtime(tx_file)
+            last_update_tx = datetime.fromtimestamp(ts)
+            st.caption(f"🕒 Last update: {last_update_tx.strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            st.caption("⚠️ ไม่พบไฟล์ transactions.csv")
+        
+        st.dataframe(tx_df.sort_values("date", ascending=False))
         # ================= Portfolio Summary =================
         st.subheader("📊 สรุปพอร์ต")
         show_cols = [
@@ -679,6 +688,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
