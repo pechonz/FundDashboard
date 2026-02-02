@@ -515,6 +515,10 @@ with tab_port:
             name="PORTFOLIO",
             line=dict(width=4)
         )
+        fig.update_layout(
+            legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+            margin=dict(t=50, b=80)
+        )
         st.plotly_chart(fig, use_container_width=True)
 
         # ================= Volatility / Diversification =================
@@ -552,6 +556,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
