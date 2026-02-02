@@ -266,6 +266,57 @@ with tab_overview:
     st.subheader(f"📊 Metrics ({tf})")
     st.dataframe(df_engine[metric_cols].round(2), use_container_width=True)
 
+    # ================= PORTFOLIO NAV (for Overview) =================
+    nav_cut = nav_df.groupby("fund").apply(
+        lambda x: filter_by_timeframe(
+            x.set_index("date")["nav"], tf
+        )
+    ).reset_index(name="nav")
+    
+    df_norm, port_nav = build_equal_weight_nav(nav_cut, funds)
+    df_port = pd.DataFrame({
+        "date": port_nav.index,
+        "nav": port_nav.values
+    })
+
+    st.subheader("📈 Portfolio NAV Curve")
+
+    fig_nav = px.line(df_port, x="date", y="nav",
+                      title="Portfolio NAV (Equal Weight)")
+    st.plotly_chart(fig_nav, use_container_width=True)
+
+    df_port["cummax"] = df_port["nav"].cummax()
+    df_port["drawdown"] = (df_port["nav"] - df_port["cummax"]) / df_port["cummax"] * 100
+    
+    st.subheader("📉 Drawdown Curve")
+    
+    fig_dd = px.area(df_port, x="date", y="drawdown",
+                     title="Drawdown %")
+    st.plotly_chart(fig_dd, use_container_width=True)
+
+    df_port["MA200"] = df_port["nav"].rolling(200).mean()
+    df_port["STD200"] = df_port["nav"].rolling(200).std()
+    df_port["z"] = (df_port["nav"] - df_port["MA200"]) / df_port["STD200"]
+    
+    st.subheader("🟢 Buy Zone / 🔴 Overheat")
+    
+    fig_bo = px.line(df_port, x="date", y="nav",
+                     title="Buy Zone / Overheat")
+    fig_bo.add_scatter(x=df_port["date"], y=df_port["MA200"],
+                       name="MA200")
+    
+    buy = df_port[df_port["z"] < -1]
+    hot = df_port[df_port["z"] > 1]
+    
+    fig_bo.add_scatter(x=buy["date"], y=buy["nav"],
+                       mode="markers", name="Buy",
+                       marker=dict(color="green", size=6))
+    fig_bo.add_scatter(x=hot["date"], y=hot["nav"],
+                       mode="markers", name="Overheat",
+                       marker=dict(color="red", size=6))
+    
+    st.plotly_chart(fig_bo, use_container_width=True)
+
 # ================= MENTAL PAIN =================
 with tab_pain:
     st.subheader(f"Mental Pain ({tf})")
