@@ -127,10 +127,96 @@ tab_overview, tab_pain, tab_port, tab_diver = st.tabs(
 )
 
 # ================= OVERVIEW =================
-# ================= OVERVIEW =================
 with tab_overview:
     st.subheader(f"Overview ({tf})")
 
+    # ------------------- NAV / Drawdown / Z-Score -------------------
+    st.subheader("📈 Fund NAV Curve + 📉 Drawdown + 🔥 Buy/Overheat Zone")
+
+    df_plot = nav_df[nav_df["fund"].isin(dff["fund"])].copy()
+
+    # ---------- NAV Curve ----------
+    fig_nav = px.line(
+        df_plot,
+        x="date",
+        y="nav",
+        color="fund",
+        title="📈 Fund NAV Curve",
+        labels={"nav":"NAV (หน่วย)", "date":"วันที่"}
+    )
+    fig_nav.update_layout(legend_title="Fund")
+    fig_nav.add_annotation(
+        x=df_plot['date'].min(),
+        y=df_plot['nav'].max(),
+        text="📌 NAV = มูลค่าหน่วยลงทุน",
+        showarrow=False,
+        font=dict(size=12, color="blue")
+    )
+    st.plotly_chart(fig_nav, use_container_width=True, height=300)
+
+    # ---------- Drawdown ----------
+    dd_all=[]
+    for f in dff["fund"]:
+        fdf = df_plot[df_plot["fund"]==f].copy()
+        fdf["cummax"]=fdf["nav"].cummax()
+        fdf["drawdown"]=(fdf["nav"]/fdf["cummax"]-1)*100
+        dd_all.append(fdf)
+    dd_df=pd.concat(dd_all)
+
+    fig_dd=px.line(
+        dd_df,
+        x="date",
+        y="drawdown",
+        color="fund",
+        title="📉 Drawdown Curve (%)",
+        labels={"drawdown":"Drawdown (%)", "date":"วันที่"}
+    )
+    fig_dd.update_traces(line=dict(width=2))
+    fig_dd.add_hline(y=0,line_dash="dash",line_color="black")
+    fig_dd.add_annotation(
+        x=dd_df['date'].min(),
+        y=dd_df["drawdown"].min(),
+        text="💥 Drawdown = % การลดลงจากจุดสูงสุด",
+        showarrow=False,
+        font=dict(size=12, color="red")
+    )
+    st.plotly_chart(fig_dd, use_container_width=True, height=300)
+
+    # ---------- Z-Score ----------
+    win = 60
+    z_all=[]
+    for f in dff["fund"]:
+        fdf = df_plot[df_plot["fund"]==f].copy()
+        fdf["ma"] = fdf["nav"].rolling(win).mean()
+        fdf["std"] = fdf["nav"].rolling(win).std()
+        fdf["z"] = (fdf["nav"]-fdf["ma"])/fdf["std"]
+        z_all.append(fdf)
+    z_df=pd.concat(z_all)
+
+    fig_z = px.line(
+        z_df,
+        x="date",
+        y="z",
+        color="fund",
+        title="🔥 Z-Score (Buy / Overheat Zone)",
+        labels={"z":"Z-Score", "date":"วันที่"}
+    )
+    fig_z.update_traces(line=dict(width=2))
+    # Buy/Overheat zones
+    fig_z.add_hline(y=2,line_dash="dash",line_color="red", annotation_text="Overheat", annotation_position="top left")
+    fig_z.add_hline(y=-2,line_dash="dash",line_color="green", annotation_text="Buy Zone", annotation_position="bottom left")
+    fig_z.add_annotation(
+        x=z_df['date'].min(),
+        y=z_df['z'].max(),
+        text="📌 Z-Score = (NAV - MA60)/STD60\nสูง → overheat / ต่ำ → ซื้อ",
+        showarrow=False,
+        font=dict(size=12, color="purple")
+    )
+    st.plotly_chart(fig_z, use_container_width=True, height=300)
+
+    st.divider()
+
+    # ------------------- Decision Engine & Risk vs Return -------------------
     ycol = f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"
     dfp = dff.dropna(subset=[ycol]).copy()
 
@@ -199,50 +285,6 @@ with tab_overview:
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # ================= METRICS =================
-        metric_cols = ["fund"]
-        if tf in ["MTD","YTD"]:
-            metric_cols += [f"{tf}_Return_%", f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
-        else:
-            metric_cols += [f"{tf}_CAGR_%", f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
-
-        st.subheader(f"📊 Metrics ({tf})")
-        st.dataframe(df_engine[metric_cols].round(2), use_container_width=True)
-
-    # NAV Curve
-    st.subheader("📈 Fund NAV Curve")
-    df_plot = nav_df[nav_df["fund"].isin(dff["fund"])]
-    fig = px.line(df_plot, x="date", y="nav", color="fund")
-    st.plotly_chart(fig, use_container_width=True, height=400)
-
-    # Drawdown
-    st.subheader("📉 Drawdown Curve")
-    dd_all=[]
-    for f in dff["fund"]:
-        fdf = nav_df[nav_df["fund"]==f].copy()
-        fdf["cummax"]=fdf["nav"].cummax()
-        fdf["drawdown"]=(fdf["nav"]/fdf["cummax"]-1)*100
-        dd_all.append(fdf)
-    dd_df=pd.concat(dd_all)
-    fig_dd=px.line(dd_df, x="date", y="drawdown", color="fund")
-    fig_dd.add_hline(y=0,line_dash="dash")
-    st.plotly_chart(fig_dd, use_container_width=True, height=400)
-
-    # Z-Score
-    st.subheader("🔥 Buy / Overheat Zone")
-    win=60
-    z_all=[]
-    for f in dff["fund"]:
-        fdf=nav_df[nav_df["fund"]==f].copy()
-        fdf["ma"]=fdf["nav"].rolling(win).mean()
-        fdf["std"]=fdf["nav"].rolling(win).std()
-        fdf["z"]=(fdf["nav"]-fdf["ma"])/fdf["std"]
-        z_all.append(fdf)
-    z_df=pd.concat(z_all)
-    fig_z=px.line(z_df, x="date", y="z", color="fund")
-    fig_z.add_hline(y=2,line_dash="dash",line_color="red")
-    fig_z.add_hline(y=-2,line_dash="dash",line_color="green")
-    st.plotly_chart(fig_z, use_container_width=True, height=400)
 
 # ================= MENTAL PAIN TAB =================
 with tab_pain:
@@ -491,6 +533,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
