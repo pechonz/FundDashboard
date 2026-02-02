@@ -501,8 +501,6 @@ with tab_port:
             st.caption(f"🕒 Last update: {last_update_tx.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             st.caption("⚠️ ไม่พบไฟล์ transactions.csv")
-        
-        st.dataframe(tx_df.sort_values("date", ascending=False))
         # ================= Portfolio Summary =================
         st.subheader("📊 สรุปพอร์ต")
         show_cols = [
@@ -688,6 +686,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
