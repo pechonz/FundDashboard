@@ -7,7 +7,8 @@ import itertools
 from datetime import datetime
 
 # ================= LOAD NAV =================
-nav_df = pd.read_csv("fund_nav_5y.csv")
+url = "https://raw.githubusercontent.com/USERNAME/REPO/main/fund_nav_5y.csv"
+nav_df = pd.read_csv(url)
 nav_df["date"] = pd.to_datetime(nav_df["date"], errors="coerce")
 nav_df = nav_df.sort_values(["fund","date"])
 
@@ -686,6 +687,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
