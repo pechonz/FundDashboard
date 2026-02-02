@@ -282,7 +282,7 @@ with tab_overview:
         y=df_plot['nav'].max(),
         text="📌 NAV = มูลค่าหน่วยลงทุน",
         showarrow=False,
-        font=dict(size=12, color="black")
+        font=dict(size=12")
     )
     fig.update_layout(yaxis_title="NAV (หน่วย)", xaxis_title="วันที่")
     st.plotly_chart(fig, use_container_width=True)
@@ -311,7 +311,7 @@ with tab_overview:
         y=dd_df['drawdown'].min(),
         text="💥 Drawdown = % การลดลงจากจุดสูงสุด",
         showarrow=False,
-        font=dict(size=12, color="black")
+        font=dict(size=12)
     )
     fig_dd.update_layout(yaxis_title="Drawdown (%)", xaxis_title="วันที่")
     st.plotly_chart(fig_dd, use_container_width=True)
@@ -345,7 +345,7 @@ with tab_overview:
         y=z_df['z'].max(),
         text="📌 Z-Score = (NAV - MA60)/STD60<br>สูง → overheat / ต่ำ → ซื้อ",
         showarrow=False,
-        font=dict(size=12, color="black")
+        font=dict(size=12)
     )
     
     fig_z.update_layout(yaxis_title="Z-Score", xaxis_title="วันที่")
@@ -722,6 +722,7 @@ Worst Rolling = ช่วงนรก
 Best Rolling = ช่วงฟิน  
 DD Duration = ทรมานกี่วัน
 """)
+
 
 
 
