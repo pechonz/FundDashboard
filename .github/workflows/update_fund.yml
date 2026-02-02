@@ -24,7 +24,7 @@ jobs:
 
       - name: Run update script
         run: |
-          python "nav.py"
+          python "getnav.py"
 
       - name: Commit updated CSV
         run: |
