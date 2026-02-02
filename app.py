@@ -13,6 +13,36 @@ nav_df["date"] = pd.to_datetime(nav_df["date"], errors="coerce")
 nav_df = nav_df.sort_values(["fund","date"])
 
 # ================= FUNCTIONS =================
+
+def get_nav_price(fund, date):
+    df = nav_df[
+        (nav_df["fund"] == fund) &
+        (nav_df["date"] <= date)
+    ].sort_values("date", ascending=False)
+    if len(df) == 0:
+        return None
+    return round(df.iloc[0]["nav"], 4)
+
+
+def explode_transactions(tx):
+    rows = []
+    for _, r in tx.iterrows():
+        if r["action"] == "BUY":
+            units = r["amount"] / r["price_to"]
+            rows.append([r["trade_date"], r["fund_to"], units])
+
+        elif r["action"] == "SELL":
+            units = - r["amount"] / r["price_from"]
+            rows.append([r["trade_date"], r["fund_from"], units])
+
+        elif r["action"] == "SWITCH":
+            out_units = - r["amount"] / r["price_from"]
+            in_units  =   r["amount"] / r["price_to"]
+            rows.append([r["trade_date"], r["fund_from"], out_units])
+            rows.append([r["trade_date"], r["fund_to"],   in_units])
+
+    return pd.DataFrame(rows, columns=["date","fund","units"])
+    
 def calc_metrics(nav, rf=0.02):
     returns = nav.pct_change().dropna()
     total_return = nav.iloc[-1] / nav.iloc[0] - 1
@@ -697,6 +727,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
