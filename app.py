@@ -436,6 +436,10 @@ with tab_port:
                 names="fund",
                 title="สัดส่วนเงินลงทุนปัจจุบัน"
             )
+            fig1.update_layout(
+                legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+                margin=dict(t=50, b=80)
+            )
             st.plotly_chart(fig1, use_container_width=True)
         with c2:
             st.subheader("⚠️ Risk Exposure")
@@ -444,6 +448,10 @@ with tab_port:
                 values="risk_weight",
                 names="fund",
                 title=f"สัดส่วนความเสี่ยง ({tf} Volatility)"
+            )
+            fig2.update_layout(
+                legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+                margin=dict(t=50, b=80)
             )
             st.plotly_chart(fig2, use_container_width=True)
 
@@ -544,6 +552,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
