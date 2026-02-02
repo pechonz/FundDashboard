@@ -282,7 +282,7 @@ with tab_overview:
         y=df_plot['nav'].max(),
         text="📌 NAV = มูลค่าหน่วยลงทุน",
         showarrow=False,
-        font=dict(size=12")
+        font=dict(size=12)
     )
     fig.update_layout(yaxis_title="NAV (หน่วย)", xaxis_title="วันที่")
     st.plotly_chart(fig, use_container_width=True)
@@ -722,6 +722,7 @@ Worst Rolling = ช่วงนรก
 Best Rolling = ช่วงฟิน  
 DD Duration = ทรมานกี่วัน
 """)
+
 
 
 
