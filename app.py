@@ -14,6 +14,7 @@ nav_df = nav_df.sort_values(["fund","date"])
 
 # ================= FUNCTIONS =================
 
+# ================= NAV FUNCTION =================
 def get_nav_price(fund, date):
     df = nav_df[
         (nav_df["fund"] == fund) &
@@ -23,7 +24,7 @@ def get_nav_price(fund, date):
         return None
     return round(df.iloc[0]["nav"], 4)
 
-
+# ================= EXPLODE ENGINE =================
 def explode_transactions(tx):
     rows = []
     for _, r in tx.iterrows():
@@ -41,7 +42,7 @@ def explode_transactions(tx):
             rows.append([r["trade_date"], r["fund_from"], out_units])
             rows.append([r["trade_date"], r["fund_to"],   in_units])
 
-    return pd.DataFrame(rows, columns=["date","fund","units"])
+    return pd.DataFrame(rows, columns=["trade_date","fund","units"])
     
 def calc_metrics(nav, rf=0.02):
     returns = nav.pct_change().dropna()
@@ -773,6 +774,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
