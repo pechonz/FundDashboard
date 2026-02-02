@@ -56,26 +56,16 @@ def build_equal_weight_nav(nav_df, funds):
 
 def filter_by_timeframe(nav_series, tf):
     end = nav_series.index.max()
-    if tf == "MTD": 
-        start = end.replace(day=1)
-    elif tf == "YTD":
-        start = end.replace(month=1, day=1)
-    elif tf == "1M":
-        start = end - pd.DateOffset(months=1)
-    elif tf == "3M":
-        start = end - pd.DateOffset(months=3)
-    elif tf == "6M":
-        start = end - pd.DateOffset(months=6)
-    elif tf == "1Y":
-        start = end - pd.DateOffset(years=1)
-    elif tf == "3Y":
-        start = end - pd.DateOffset(years=3)
-    elif tf == "5Y":
-        start = end - pd.DateOffset(years=5)
-    elif tf == "MAX":
-        start = nav_series.index.min()
-    else:
-        return nav_series
+    if tf == "MTD": start = end.replace(day=1)
+    elif tf == "YTD": start = end.replace(month=1, day=1)
+    elif tf == "1M": start = end - pd.DateOffset(months=1)
+    elif tf == "3M": start = end - pd.DateOffset(months=3)
+    elif tf == "6M": start = end - pd.DateOffset(months=6)
+    elif tf == "1Y": start = end - pd.DateOffset(years=1)
+    elif tf == "3Y": start = end - pd.DateOffset(years=3)
+    elif tf == "5Y": start = end - pd.DateOffset(years=5)
+    elif tf == "MAX": start = nav_series.index.min()
+    else: return nav_series
     return nav_series[nav_series.index >= start]
 
 def recommend(row, tf):
@@ -83,18 +73,12 @@ def recommend(row, tf):
         cagr = row[f"{tf}_CAGR_%"]
         sharpe = row[f"{tf}_Sharpe"]
         dd = abs(row[f"{tf}_MaxDD_%"])
-    except:
-        return "ข้อมูลไม่พอ"
-    if pd.isna(cagr) or pd.isna(sharpe):
-        return "ข้อมูลไม่พอ"
-    if cagr > 8 and sharpe > 1 and dd < 25:
-        return "🟢 ควรเพิ่ม"
-    elif cagr > 5 and sharpe > 0.5:
-        return "🟡 ถือรอ"
-    elif sharpe < 0.3 or dd > 40:
-        return "🟠 ควรลด"
-    else:
-        return "🔴 ควรขาย/สับ"
+    except: return "ข้อมูลไม่พอ"
+    if pd.isna(cagr) or pd.isna(sharpe): return "ข้อมูลไม่พอ"
+    if cagr > 8 and sharpe > 1 and dd < 25: return "🟢 ควรเพิ่ม"
+    elif cagr > 5 and sharpe > 0.5: return "🟡 ถือรอ"
+    elif sharpe < 0.3 or dd > 40: return "🟠 ควรลด"
+    else: return "🔴 ควรขาย/สับ"
 
 def multi_vote(row):
     frames = ["3M","6M","1Y","3Y"]
@@ -102,22 +86,14 @@ def multi_vote(row):
     for tf in frames:
         try:
             v = recommend(row, tf)
-            if v != "ข้อมูลไม่พอ":
-                votes.append(v)
-        except:
-            pass
-    if len(votes) == 0:
-        return "ข้อมูลไม่พอ"
-    final = max(set(votes), key=votes.count)
-    return final
+            if v != "ข้อมูลไม่พอ": votes.append(v)
+        except: pass
+    if len(votes) == 0: return "ข้อมูลไม่พอ"
+    return max(set(votes), key=votes.count)
 
 # ================= PRE-CALC =================
 timeframes = ["MTD","YTD","1M","3M","6M","1Y","3Y","5Y","MAX"]
-METRICS = [
-    "Return_%","CAGR_%","Volatility_%","Sharpe",
-    "MaxDD_%","Worst_Rolling_%","Best_Rolling_%","DD_Duration_days"
-]
-
+METRICS = ["Return_%","CAGR_%","Volatility_%","Sharpe","MaxDD_%","Worst_Rolling_%","Best_Rolling_%","DD_Duration_days"]
 rows = []
 for fund, g in nav_df.groupby("fund"):
     g = g.sort_values("date").set_index("date")
@@ -128,56 +104,35 @@ for fund, g in nav_df.groupby("fund"):
         if len(sub) >= 20:
             m = calc_metrics(sub)
             for k in METRICS:
-                if tf == "YTD" and k in ["CAGR_%","Sharpe"]:
-                    data[f"{tf}_{k}"] = np.nan
-                else:
-                    data[f"{tf}_{k}"] = m[k]
+                if tf=="YTD" and k in ["CAGR_%","Sharpe"]: data[f"{tf}_{k}"] = np.nan
+                else: data[f"{tf}_{k}"] = m[k]
         else:
-            for k in METRICS:
-                data[f"{tf}_{k}"] = np.nan
+            for k in METRICS: data[f"{tf}_{k}"] = np.nan
     rows.append(data)
-
 df = pd.DataFrame(rows)
 
 # ================= UI =================
 st.set_page_config(page_title="Fund Dashboard", layout="centered")
-st.title("📊 Fund Performance Dashboard (Investor View)")
+st.title("📊 Fund Performance Dashboard (Mobile View)")
 
-# ================= MOBILE-FRIENDLY SETTINGS =================
+# ========== EXPANDER: FILTER ==========
 with st.expander("🔧 ตัวเลือกกองทุน / Timeframe", expanded=True):
-    tf = st.radio(
-        "📅 Timeframe",
-        ["MTD","YTD","1M","3M","6M","1Y","3Y","5Y","MAX"],
-        index=5,
-        horizontal=True
-    )
-    funds = st.multiselect(
-        "เลือกกองทุน",
-        df["fund"].unique(),
-        default=list(df["fund"].unique())
-    )
-
+    tf = st.radio("📅 Timeframe", timeframes, index=5, horizontal=True)
+    funds = st.multiselect("เลือกกองทุน", df["fund"].unique(), default=list(df["fund"].unique()))
 dff = df[df["fund"].isin(funds)]
 
-# ================= OVERVIEW =================
+# ========== TAB: OVERVIEW ==========
 with st.expander(f"📊 Overview ({tf})", expanded=True):
     st.subheader("🧭 Decision (Multi-Timeframe Voting)")
     dfp = dff.dropna(subset=[f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"]).copy()
     df_engine = dfp.copy()
-    df_engine["3M"] = df_engine.apply(lambda r: recommend(r, "3M"), axis=1)
-    df_engine["6M"] = df_engine.apply(lambda r: recommend(r, "6M"), axis=1)
-    df_engine["1Y"] = df_engine.apply(lambda r: recommend(r, "1Y"), axis=1)
-    df_engine["3Y"] = df_engine.apply(lambda r: recommend(r, "3Y"), axis=1)
+    for t in ["3M","6M","1Y","3Y"]: df_engine[t] = df_engine.apply(lambda r: recommend(r,t), axis=1)
     df_engine["Final Action"] = df_engine.apply(multi_vote, axis=1)
-    decision_cols = ["fund","3M","6M","1Y","3Y","Final Action"]
-    st.dataframe(df_engine[decision_cols], use_container_width=True)
+    st.dataframe(df_engine[["fund","3M","6M","1Y","3Y","Final Action"]], use_container_width=True)
 
     # Risk vs Return
     ycol = f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"
-    fig = px.scatter(
-        dfp, x=f"{tf}_Volatility_%", y=ycol, size=dfp[f"{tf}_MaxDD_%"].abs(),
-        text="fund", title="Risk vs Return"
-    )
+    fig = px.scatter(dfp, x=f"{tf}_Volatility_%", y=ycol, size=dfp[f"{tf}_MaxDD_%"].abs(), text="fund", title="Risk vs Return")
     fig.update_layout(font=dict(size=10))
     st.plotly_chart(fig, use_container_width=True, height=400)
 
@@ -194,24 +149,62 @@ with st.expander(f"📊 Overview ({tf})", expanded=True):
     fig.update_layout(yaxis_title="NAV (หน่วย)", xaxis_title="วันที่", font=dict(size=10))
     st.plotly_chart(fig, use_container_width=True, height=400)
 
-# ================= MENTAL PAIN =================
-with st.expander(f"😈 Mental Pain ({tf})"):
-    dfp = dff.dropna(subset=[f"{tf}_DD_Duration_days", f"{tf}_Worst_Rolling_%"])
-    dfp["Pain_%"] = -dfp[f"{tf}_Worst_Rolling_%"]
-    fig = px.scatter(
-        dfp, x=f"{tf}_DD_Duration_days", y=f"{tf}_Worst_Rolling_%", size=dfp[f"{tf}_MaxDD_%"].abs(),
-        color=f"{tf}_Best_Rolling_%", text="fund", title="Mental Pain Map"
-    )
-    fig.update_layout(font=dict(size=10))
-    st.plotly_chart(fig, use_container_width=True, height=400)
+    # Drawdown
+    st.subheader("📉 Drawdown Curve")
+    dd_all = []
+    for f in dff["fund"]:
+        fdf = nav_df[nav_df["fund"]==f].copy()
+        fdf["cummax"]=fdf["nav"].cummax()
+        fdf["drawdown"]=(fdf["nav"]/fdf["cummax"]-1)*100
+        dd_all.append(fdf)
+    dd_df=pd.concat(dd_all)
+    fig_dd = px.line(dd_df, x="date", y="drawdown", color="fund", title="Drawdown (%)")
+    fig_dd.add_hline(y=0, line_dash="dash")
+    fig_dd.update_layout(yaxis_title="Drawdown (%)", xaxis_title="วันที่", font=dict(size=10))
+    st.plotly_chart(fig_dd, use_container_width=True, height=400)
 
-# ================= FOOTER =================
-st.caption("""
-CAGR = โตจริง  
-Volatility = ผันผวน  
-Sharpe = คุ้มเสี่ยง  
-MaxDD = เจ็บสุด  
-Worst Rolling = ช่วงนรก  
-Best Rolling = ช่วงฟิน  
-DD Duration = ทรมานกี่วัน
-""")
+    # Z-Score
+    st.subheader("🔥 Buy / Overheat Zone (Z-Score)")
+    win = 60
+    z_all=[]
+    for f in dff["fund"]:
+        fdf=nav_df[nav_df["fund"]==f].copy()
+        fdf["ma"]=fdf["nav"].rolling(win).mean()
+        fdf["std"]=fdf["nav"].rolling(win).std()
+        fdf["z"]=(fdf["nav"]-fdf["ma"])/fdf["std"]
+        z_all.append(fdf)
+    z_df=pd.concat(z_all)
+    fig_z = px.line(z_df, x="date", y="z", color="fund", title="Z-Score (Buy/Overheat)")
+    fig_z.add_hline(y=2, line_dash="dash", line_color="red", annotation_text="Overheat", annotation_position="top left")
+    fig_z.add_hline(y=-2, line_dash="dash", line_color="green", annotation_text="Buy Zone", annotation_position="bottom left")
+    fig_z.update_layout(yaxis_title="Z-Score", xaxis_title="วันที่", font=dict(size=10))
+    st.plotly_chart(fig_z, use_container_width=True, height=400)
+
+# ========== TAB: PORTFOLIO ==========
+with st.expander(f"🧾 Portfolio ({tf})", expanded=True):
+    if not os.path.exists("transactions.csv"):
+        pd.DataFrame(columns=["date","fund","amount","price"]).to_csv("transactions.csv", index=False)
+    tx_df = pd.read_csv("transactions.csv")
+    tx_df["date"] = pd.to_datetime(tx_df["date"], errors="coerce")
+
+    st.subheader("➕ เพิ่ม Transaction")
+    with st.form("add_tx"):
+        tx_date = st.date_input("วันที่")
+        tx_fund = st.selectbox("กองทุน", df["fund"].unique())
+        tx_amount = st.number_input("เงินลงทุน", min_value=0.0)
+        tx_price = st.number_input("ราคาต่อหน่วย", min_value=0.0)
+        if st.form_submit_button("➕ เพิ่ม"):
+            new = pd.DataFrame([{"date":tx_date,"fund":tx_fund,"amount":tx_amount,"price":tx_price}])
+            tx_df=pd.concat([tx_df,new])
+            tx_df.to_csv("transactions.csv", index=False)
+            st.success("บันทึกเรียบร้อย")
+    st.dataframe(tx_df.sort_values("date", ascending=False), use_container_width=True)
+
+# ========== TAB: DIVERSIFICATION ==========
+with st.expander("🔗 Diversification & Correlation", expanded=True):
+    nav_cut = nav_df.groupby("fund").apply(lambda x: filter_by_timeframe(x.set_index("date")["nav"], tf)).reset_index(name="nav")
+    df_ret = nav_cut[nav_cut["fund"].isin(funds)].pivot(index="date", columns="fund", values="nav").ffill().pct_change().dropna()
+    if len(df_ret)<60: st.warning("ข้อมูลน้อยเกินไป Correlation อาจไม่น่าเชื่อถือ (≥60 วัน)")
+    corr = df_ret.corr()
+    fig = px.imshow(corr, text_auto=".2f", color_continuous_scale="RdBu", zmin=-1, zmax=1, title="Correlation Heatmap")
+    st.plotly_chart(fig, use_container_width=True, height=400)
