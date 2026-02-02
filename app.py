@@ -384,7 +384,7 @@ with tab_port:
     if not os.path.exists("transactions.csv"):
         pd.DataFrame(columns=["date","fund","amount","price"]).to_csv("transactions.csv", index=False)
 
-    tx_df = pd.read_csv("transactions.csv", dtype=str)
+    tx_df = pd.read_csv("transactions.csv")
     tx_df["date"] = pd.to_datetime(tx_df["date"], errors="coerce")
 
     # ---------- Filter NAV by selected funds & timeframe ----------
@@ -686,6 +686,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
