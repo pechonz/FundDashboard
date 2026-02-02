@@ -104,68 +104,71 @@ for fund, g in nav_df.groupby("fund"):
         if len(sub) >= 20:
             m = calc_metrics(sub)
             for k in METRICS:
-                if tf=="YTD" and k in ["CAGR_%","Sharpe"]: data[f"{tf}_{k}"] = np.nan
-                else: data[f"{tf}_{k}"] = m[k]
+                if tf=="YTD" and k in ["CAGR_%","Sharpe"]: data[f"{tf}_{k}"]=np.nan
+                else: data[f"{tf}_{k}"]=m[k]
         else:
-            for k in METRICS: data[f"{tf}_{k}"] = np.nan
+            for k in METRICS: data[f"{tf}_{k}"]=np.nan
     rows.append(data)
 df = pd.DataFrame(rows)
 
 # ================= UI =================
 st.set_page_config(page_title="Fund Dashboard", layout="centered")
-st.title("📊 Fund Performance Dashboard (Mobile View)")
+st.title("📊 Fund Performance Dashboard (Mobile)")
 
-# ========== EXPANDER: FILTER ==========
+# ================= EXPANDER: FILTER =================
 with st.expander("🔧 ตัวเลือกกองทุน / Timeframe", expanded=True):
     tf = st.radio("📅 Timeframe", timeframes, index=5, horizontal=True)
     funds = st.multiselect("เลือกกองทุน", df["fund"].unique(), default=list(df["fund"].unique()))
 dff = df[df["fund"].isin(funds)]
 
-# ========== TAB: OVERVIEW ==========
-with st.expander(f"📊 Overview ({tf})", expanded=True):
-    st.subheader("🧭 Decision (Multi-Timeframe Voting)")
-    dfp = dff.dropna(subset=[f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"]).copy()
+# ================= TABS =================
+tab_overview, tab_pain, tab_port, tab_diver = st.tabs(
+    ["📊 Overview", "😈 Mental Pain", "🧾 Portfolio", "🔗 Diversification"]
+)
+
+# ================= OVERVIEW =================
+with tab_overview:
+    st.subheader(f"Overview ({tf})")
+    ycol = f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"
+    dfp = dff.dropna(subset=[ycol])
     df_engine = dfp.copy()
-    for t in ["3M","6M","1Y","3Y"]: df_engine[t] = df_engine.apply(lambda r: recommend(r,t), axis=1)
+    for t in ["3M","6M","1Y","3Y"]: df_engine[t]=df_engine.apply(lambda r: recommend(r,t), axis=1)
     df_engine["Final Action"] = df_engine.apply(multi_vote, axis=1)
+    st.subheader("🧭 Decision (Multi-Timeframe Voting)")
     st.dataframe(df_engine[["fund","3M","6M","1Y","3Y","Final Action"]], use_container_width=True)
 
     # Risk vs Return
-    ycol = f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"
     fig = px.scatter(dfp, x=f"{tf}_Volatility_%", y=ycol, size=dfp[f"{tf}_MaxDD_%"].abs(), text="fund", title="Risk vs Return")
-    fig.update_layout(font=dict(size=10))
+    fig.update_traces(textposition="top center")
     st.plotly_chart(fig, use_container_width=True, height=400)
 
-    # Metrics table
-    metric_cols = ["fund", f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%",
-                   f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
+    # Metrics
+    metric_cols = ["fund", ycol, f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
     st.subheader("📊 Metrics")
     st.dataframe(df_engine[metric_cols].round(2), use_container_width=True)
 
     # NAV Curve
     st.subheader("📈 Fund NAV Curve")
     df_plot = nav_df[nav_df["fund"].isin(dff["fund"])]
-    fig = px.line(df_plot, x="date", y="nav", color="fund", title="Fund NAV Curve")
-    fig.update_layout(yaxis_title="NAV (หน่วย)", xaxis_title="วันที่", font=dict(size=10))
+    fig = px.line(df_plot, x="date", y="nav", color="fund")
     st.plotly_chart(fig, use_container_width=True, height=400)
 
     # Drawdown
     st.subheader("📉 Drawdown Curve")
-    dd_all = []
+    dd_all=[]
     for f in dff["fund"]:
         fdf = nav_df[nav_df["fund"]==f].copy()
         fdf["cummax"]=fdf["nav"].cummax()
         fdf["drawdown"]=(fdf["nav"]/fdf["cummax"]-1)*100
         dd_all.append(fdf)
     dd_df=pd.concat(dd_all)
-    fig_dd = px.line(dd_df, x="date", y="drawdown", color="fund", title="Drawdown (%)")
-    fig_dd.add_hline(y=0, line_dash="dash")
-    fig_dd.update_layout(yaxis_title="Drawdown (%)", xaxis_title="วันที่", font=dict(size=10))
+    fig_dd=px.line(dd_df, x="date", y="drawdown", color="fund")
+    fig_dd.add_hline(y=0,line_dash="dash")
     st.plotly_chart(fig_dd, use_container_width=True, height=400)
 
     # Z-Score
-    st.subheader("🔥 Buy / Overheat Zone (Z-Score)")
-    win = 60
+    st.subheader("🔥 Buy / Overheat Zone")
+    win=60
     z_all=[]
     for f in dff["fund"]:
         fdf=nav_df[nav_df["fund"]==f].copy()
@@ -174,37 +177,42 @@ with st.expander(f"📊 Overview ({tf})", expanded=True):
         fdf["z"]=(fdf["nav"]-fdf["ma"])/fdf["std"]
         z_all.append(fdf)
     z_df=pd.concat(z_all)
-    fig_z = px.line(z_df, x="date", y="z", color="fund", title="Z-Score (Buy/Overheat)")
-    fig_z.add_hline(y=2, line_dash="dash", line_color="red", annotation_text="Overheat", annotation_position="top left")
-    fig_z.add_hline(y=-2, line_dash="dash", line_color="green", annotation_text="Buy Zone", annotation_position="bottom left")
-    fig_z.update_layout(yaxis_title="Z-Score", xaxis_title="วันที่", font=dict(size=10))
+    fig_z=px.line(z_df, x="date", y="z", color="fund")
+    fig_z.add_hline(y=2,line_dash="dash",line_color="red")
+    fig_z.add_hline(y=-2,line_dash="dash",line_color="green")
     st.plotly_chart(fig_z, use_container_width=True, height=400)
 
-# ========== TAB: PORTFOLIO ==========
-with st.expander(f"🧾 Portfolio ({tf})", expanded=True):
+# ================= MENTAL PAIN =================
+with tab_pain:
+    st.subheader(f"Mental Pain ({tf})")
+    dfp=dff.dropna(subset=[f"{tf}_DD_Duration_days", f"{tf}_Worst_Rolling_%"])
+    fig=px.scatter(dfp, x=f"{tf}_DD_Duration_days", y=f"{tf}_Worst_Rolling_%", size=dfp[f"{tf}_MaxDD_%"].abs(), color=f"{tf}_Best_Rolling_%", text="fund", title="Mental Pain Map")
+    st.plotly_chart(fig, use_container_width=True, height=400)
+
+# ================= PORTFOLIO =================
+with tab_port:
     if not os.path.exists("transactions.csv"):
         pd.DataFrame(columns=["date","fund","amount","price"]).to_csv("transactions.csv", index=False)
-    tx_df = pd.read_csv("transactions.csv")
-    tx_df["date"] = pd.to_datetime(tx_df["date"], errors="coerce")
-
-    st.subheader("➕ เพิ่ม Transaction")
+    tx_df=pd.read_csv("transactions.csv")
+    tx_df["date"]=pd.to_datetime(tx_df["date"], errors="coerce")
+    st.subheader("➕ Add Transaction")
     with st.form("add_tx"):
         tx_date = st.date_input("วันที่")
         tx_fund = st.selectbox("กองทุน", df["fund"].unique())
         tx_amount = st.number_input("เงินลงทุน", min_value=0.0)
         tx_price = st.number_input("ราคาต่อหน่วย", min_value=0.0)
         if st.form_submit_button("➕ เพิ่ม"):
-            new = pd.DataFrame([{"date":tx_date,"fund":tx_fund,"amount":tx_amount,"price":tx_price}])
+            new=pd.DataFrame([{"date":tx_date,"fund":tx_fund,"amount":tx_amount,"price":tx_price}])
             tx_df=pd.concat([tx_df,new])
             tx_df.to_csv("transactions.csv", index=False)
             st.success("บันทึกเรียบร้อย")
     st.dataframe(tx_df.sort_values("date", ascending=False), use_container_width=True)
 
-# ========== TAB: DIVERSIFICATION ==========
-with st.expander("🔗 Diversification & Correlation", expanded=True):
-    nav_cut = nav_df.groupby("fund").apply(lambda x: filter_by_timeframe(x.set_index("date")["nav"], tf)).reset_index(name="nav")
-    df_ret = nav_cut[nav_cut["fund"].isin(funds)].pivot(index="date", columns="fund", values="nav").ffill().pct_change().dropna()
-    if len(df_ret)<60: st.warning("ข้อมูลน้อยเกินไป Correlation อาจไม่น่าเชื่อถือ (≥60 วัน)")
-    corr = df_ret.corr()
-    fig = px.imshow(corr, text_auto=".2f", color_continuous_scale="RdBu", zmin=-1, zmax=1, title="Correlation Heatmap")
-    st.plotly_chart(fig, use_container_width=True, height=400)
+# ================= DIVERSIFICATION =================
+with tab_diver:
+    st.subheader("Correlation Heatmap")
+    nav_cut=nav_df.groupby("fund").apply(lambda x: filter_by_timeframe(x.set_index("date")["nav"], tf)).reset_index(name="nav")
+    df_ret=nav_cut[nav_cut["fund"].isin(funds)].pivot(index="date", columns="fund", values="nav").ffill().pct_change().dropna()
+    corr=df_ret.corr()
+    fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
+    st.plotly_chart(fig,use_container_width=True,height=400)
