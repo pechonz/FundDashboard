@@ -1,0 +1,35 @@
+name: Update Fund NAV
+
+on:
+  schedule:
+    - cron: "0 1 * * *"   # ทุกวัน 08:00 เวลาไทย (UTC+7)
+  workflow_dispatch:     # กดรันเองจากหน้า GitHub ได้
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run update script
+        run: |
+          python "nav.py"
+
+      - name: Commit updated CSV
+        run: |
+          git config user.name "fund-bot"
+          git config user.email "fund-bot@users.noreply.github.com"
+          git add fund_nav_5y.csv
+          git commit -m "auto update fund_nav_5y"
+          git push
