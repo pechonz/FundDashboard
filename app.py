@@ -113,7 +113,7 @@ df = pd.DataFrame(rows)
 
 # ================= UI =================
 st.set_page_config(page_title="Fund Dashboard", layout="centered")
-st.title("📊 Fund Performance Dashboard (Mobile)")
+st.title("📊 FPDP")
 
 # ================= EXPANDER: FILTER =================
 with st.expander("🔧 ตัวเลือกกองทุน / Timeframe", expanded=True):
@@ -556,6 +556,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
