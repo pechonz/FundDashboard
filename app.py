@@ -275,6 +275,16 @@ with tab_overview:
         color="fund",
         title="Fund NAV Curve"
     )
+    
+    # Add annotation / explanation
+    fig.add_annotation(
+        x=df_plot['date'].min(),
+        y=df_plot['nav'].max(),
+        text="📌 NAV = มูลค่าหน่วยลงทุน",
+        showarrow=False,
+        font=dict(size=12, color="black")
+    )
+    fig.update_layout(yaxis_title="NAV (หน่วย)", xaxis_title="วันที่")
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("📉 Drawdown Curve")
@@ -284,7 +294,7 @@ with tab_overview:
         fdf["cummax"] = fdf["nav"].cummax()
         fdf["drawdown"] = (fdf["nav"] / fdf["cummax"] - 1) * 100
         dd_all.append(fdf)
-
+    
     dd_df = pd.concat(dd_all)
     fig_dd = px.line(
         dd_df,
@@ -293,6 +303,17 @@ with tab_overview:
         color="fund",
         title="Drawdown (%)"
     )
+    
+    # Add horizontal line and annotation
+    fig_dd.add_hline(y=0, line_dash="dash", line_color="black")
+    fig_dd.add_annotation(
+        x=dd_df['date'].min(),
+        y=dd_df['drawdown'].min(),
+        text="💥 Drawdown = % การลดลงจากจุดสูงสุด",
+        showarrow=False,
+        font=dict(size=12, color="black")
+    )
+    fig_dd.update_layout(yaxis_title="Drawdown (%)", xaxis_title="วันที่")
     st.plotly_chart(fig_dd, use_container_width=True)
 
     st.subheader("🔥 Buy / Overheat Zone")
@@ -304,6 +325,7 @@ with tab_overview:
         fdf["std"] = fdf["nav"].rolling(win).std()
         fdf["z"] = (fdf["nav"] - fdf["ma"]) / fdf["std"]
         z_all.append(fdf)
+    
     z_df = pd.concat(z_all)
     fig_z = px.line(
         z_df,
@@ -312,8 +334,21 @@ with tab_overview:
         color="fund",
         title="Z-Score (Buy / Overheat)"
     )
-    fig_z.add_hline(y=2, line_dash="dash")
-    fig_z.add_hline(y=-2, line_dash="dash")
+    
+    # Add horizontal lines for Buy / Overheat zone
+    fig_z.add_hline(y=2, line_dash="dash", line_color="red", annotation_text="Overheat", annotation_position="top left")
+    fig_z.add_hline(y=-2, line_dash="dash", line_color="green", annotation_text="Buy Zone", annotation_position="bottom left")
+    
+    # Add explanation annotation
+    fig_z.add_annotation(
+        x=z_df['date'].min(),
+        y=z_df['z'].max(),
+        text="📌 Z-Score = (NAV - MA60)/STD60<br>สูง → overheat / ต่ำ → ซื้อ",
+        showarrow=False,
+        font=dict(size=12, color="black")
+    )
+    
+    fig_z.update_layout(yaxis_title="Z-Score", xaxis_title="วันที่")
     st.plotly_chart(fig_z, use_container_width=True)
 
 # ================= MENTAL PAIN =================
@@ -687,6 +722,7 @@ Worst Rolling = ช่วงนรก
 Best Rolling = ช่วงฟิน  
 DD Duration = ทรมานกี่วัน
 """)
+
 
 
 
