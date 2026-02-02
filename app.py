@@ -279,43 +279,74 @@ with tab_overview:
         "nav": port_nav.values
     })
 
-    st.subheader("📈 Portfolio NAV Curve")
+    st.subheader("📈 Fund NAV Curve")
 
-    fig_nav = px.line(df_port, x="date", y="nav",
-                      title="Portfolio NAV (Equal Weight)")
-    st.plotly_chart(fig_nav, use_container_width=True)
+    sel_fund = st.selectbox(
+        "เลือกกองทุน",
+        nav_df["fund"].unique(),
+        key="fund_nav_select"
+    )
 
-    df_port["cummax"] = df_port["nav"].cummax()
-    df_port["drawdown"] = (df_port["nav"] - df_port["cummax"]) / df_port["cummax"] * 100
-    
-    st.subheader("📉 Drawdown Curve")
-    
-    fig_dd = px.area(df_port, x="date", y="drawdown",
-                     title="Drawdown %")
+    fdf = nav_df[nav_df["fund"] == sel_fund].sort_values("date")
+
+    fig = px.line(
+        fdf,
+        x="date",
+        y="nav",
+        title=f"{sel_fund} NAV"
+    )
+
+    fig.update_layout(
+        yaxis_title="NAV",
+        xaxis_title="Date",
+        height=400
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("📉 Drawdown Curve")
+
+    fdf["cummax"] = fdf["nav"].cummax()
+    fdf["drawdown"] = (fdf["nav"] / fdf["cummax"] - 1) * 100
+
+    fig_dd = px.area(
+        fdf,
+        x="date",
+        y="drawdown",
+        title=f"{sel_fund} Drawdown (%)"
+    )
+
+    fig_dd.update_layout(
+        yaxis_title="Drawdown %",
+        xaxis_title="Date",
+        height=300
+    )
+
     st.plotly_chart(fig_dd, use_container_width=True)
 
-    df_port["MA200"] = df_port["nav"].rolling(200).mean()
-    df_port["STD200"] = df_port["nav"].rolling(200).std()
-    df_port["z"] = (df_port["nav"] - df_port["MA200"]) / df_port["STD200"]
-    
-    st.subheader("🟢 Buy Zone / 🔴 Overheat")
-    
-    fig_bo = px.line(df_port, x="date", y="nav",
-                     title="Buy Zone / Overheat")
-    fig_bo.add_scatter(x=df_port["date"], y=df_port["MA200"],
-                       name="MA200")
-    
-    buy = df_port[df_port["z"] < -1]
-    hot = df_port[df_port["z"] > 1]
-    
-    fig_bo.add_scatter(x=buy["date"], y=buy["nav"],
-                       mode="markers", name="Buy",
-                       marker=dict(color="green", size=6))
-    fig_bo.add_scatter(x=hot["date"], y=hot["nav"],
-                       mode="markers", name="Overheat",
-                       marker=dict(color="red", size=6))
-    
-    st.plotly_chart(fig_bo, use_container_width=True)
+    st.subheader("🔥 Buy / Overheat Zone")
+
+    win = 60
+    fdf["ma"] = fdf["nav"].rolling(win).mean()
+    fdf["std"] = fdf["nav"].rolling(win).std()
+    fdf["z"] = (fdf["nav"] - fdf["ma"]) / fdf["std"]
+
+    fig_z = px.line(
+        fdf,
+        x="date",
+        y="z",
+        title=f"{sel_fund} Z-Score (Rolling {win}d)"
+    )
+
+    fig_z.add_hline(y=2, line_dash="dash")
+    fig_z.add_hline(y=-2, line_dash="dash")
+
+    fig_z.update_layout(
+        yaxis_title="Z",
+        height=300
+    )
+
+    st.plotly_chart(fig_z, use_container_width=True)
 
 # ================= MENTAL PAIN =================
 with tab_pain:
@@ -688,3 +719,4 @@ Worst Rolling = ช่วงนรก
 Best Rolling = ช่วงฟิน  
 DD Duration = ทรมานกี่วัน
 """)
+
