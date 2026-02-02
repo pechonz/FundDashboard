@@ -301,11 +301,9 @@ with tab_overview:
         xaxis_title="Date",
         height=400
     )
-
     st.plotly_chart(fig, use_container_width=True)
 
-        st.subheader("📉 Drawdown Curve")
-
+    st.subheader("📉 Drawdown Curve")
     fdf["cummax"] = fdf["nav"].cummax()
     fdf["drawdown"] = (fdf["nav"] / fdf["cummax"] - 1) * 100
 
@@ -321,11 +319,9 @@ with tab_overview:
         xaxis_title="Date",
         height=300
     )
-
     st.plotly_chart(fig_dd, use_container_width=True)
 
     st.subheader("🔥 Buy / Overheat Zone")
-
     win = 60
     fdf["ma"] = fdf["nav"].rolling(win).mean()
     fdf["std"] = fdf["nav"].rolling(win).std()
@@ -337,7 +333,6 @@ with tab_overview:
         y="z",
         title=f"{sel_fund} Z-Score (Rolling {win}d)"
     )
-
     fig_z.add_hline(y=2, line_dash="dash")
     fig_z.add_hline(y=-2, line_dash="dash")
 
@@ -345,7 +340,6 @@ with tab_overview:
         yaxis_title="Z",
         height=300
     )
-
     st.plotly_chart(fig_z, use_container_width=True)
 
 # ================= MENTAL PAIN =================
@@ -719,4 +713,5 @@ Worst Rolling = ช่วงนรก
 Best Rolling = ช่วงฟิน  
 DD Duration = ทรมานกี่วัน
 """)
+
 
