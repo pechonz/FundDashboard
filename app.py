@@ -42,11 +42,9 @@ def calc_metrics(nav, rf=0.02):
         "Best_Rolling_%": roll.max()*100,
         "DD_Duration_days": dd_duration
     }
-    
+
 def build_equal_weight_nav(nav_df, funds):
-    df = nav_df[nav_df["fund"].isin(funds)] \
-            .pivot(index="date", columns="fund", values="nav") \
-            .sort_index()
+    df = nav_df[nav_df["fund"].isin(funds)].pivot(index="date", columns="fund", values="nav").sort_index()
     start_date = df.dropna().index.min()
     df = df[df.index >= start_date].ffill()
     returns = df.pct_change().fillna(0)
@@ -146,8 +144,6 @@ st.set_page_config(page_title="Fund Dashboard", layout="centered")
 st.title("📊 Fund Performance Dashboard (Investor View)")
 
 # ================= MOBILE-FRIENDLY SETTINGS =================
-is_mobile = st.experimental_user_agent.browser in ["Mobile Safari", "Chrome Mobile"]
-
 with st.expander("🔧 ตัวเลือกกองทุน / Timeframe", expanded=True):
     tf = st.radio(
         "📅 Timeframe",
@@ -208,63 +204,6 @@ with st.expander(f"😈 Mental Pain ({tf})"):
     )
     fig.update_layout(font=dict(size=10))
     st.plotly_chart(fig, use_container_width=True, height=400)
-
-# ================= PORTFOLIO =================
-with st.expander("🧾 Portfolio"):
-    if not os.path.exists("transactions.csv"):
-        pd.DataFrame(columns=["date","fund","amount","price"]).to_csv("transactions.csv", index=False)
-    nav_cut = nav_df.set_index("date")
-    nav_cut = nav_df.groupby("fund").apply(lambda x: filter_by_timeframe(x.set_index("date")["nav"], tf)).reset_index(name="nav")
-    tx_df = pd.read_csv("transactions.csv")
-    tx_df["date"] = pd.to_datetime(tx_df["date"], errors="coerce")
-    
-    if len(tx_df) > 0:
-        tx_df["units"] = tx_df["amount"] / tx_df["price"]
-        port = tx_df.groupby("fund").agg({"amount":"sum","units":"sum"}).reset_index()
-        port = port[port["fund"].isin(funds)]
-        latest_nav = nav_cut.sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
-        port = port.merge(latest_nav, on="fund", how="left")
-        port["current_value"] = port["units"] * port["nav"]
-        port["profit"] = port["current_value"] - port["amount"]
-        port["profit_%"] = port["profit"] / port["amount"] * 100
-        risk_col = f"{tf}_Volatility_%"
-        vol_cols = df[["fund", risk_col]]
-        port = port.merge(vol_cols, on="fund", how="left")
-        port["risk_weight"] = port["current_value"] * port[risk_col]
-        total_amount = port["amount"].sum()
-        total_value = port["current_value"].sum()
-        total_profit = total_value - total_amount
-        total_profit_pct = total_profit / total_amount * 100
-        summary_row = pd.DataFrame([{
-            "fund": "TOTAL", "amount": total_amount, "units": np.nan,
-            "nav": np.nan, "current_value": total_value, "profit": total_profit,
-            "profit_%": total_profit_pct, risk_col: np.nan, "risk_weight": port["risk_weight"].sum()
-        }])
-        port_show = pd.concat([port, summary_row], ignore_index=True)
-        
-        # Charts stack vertically
-        st.subheader("🥧 Money Allocation")
-        fig1 = px.pie(port, values="current_value", names="fund", title="สัดส่วนเงินลงทุนปัจจุบัน")
-        st.plotly_chart(fig1, use_container_width=True, height=400)
-
-        st.subheader("⚠️ Risk Exposure")
-        fig2 = px.pie(port, values="risk_weight", names="fund", title=f"สัดส่วนความเสี่ยง (Money × {tf} Volatility)")
-        st.plotly_chart(fig2, use_container_width=True, height=400)
-
-    # Add transaction form
-    st.subheader("➕ บันทึกการซื้อกองทุน")
-    with st.form("add_tx"):
-        tx_date = st.date_input("วันที่")
-        tx_fund = st.selectbox("กองทุน", df["fund"].unique())
-        tx_amount = st.number_input("เงินลงทุน", min_value=0.0)
-        tx_price = st.number_input("ราคาต่อหน่วย", min_value=0.0)
-        if st.form_submit_button("➕ เพิ่ม"):
-            new = pd.DataFrame([{"date": pd.to_datetime(tx_date), "fund": tx_fund, "amount": tx_amount, "price": tx_price}])
-            tx_df = pd.concat([tx_df, new])
-            tx_df.to_csv("transactions.csv", index=False)
-            st.success("บันทึกเรียบร้อย")
-    st.subheader("📜 ประวัติ")
-    st.dataframe(tx_df.sort_values("date", ascending=False), use_container_width=True)
 
 # ================= FOOTER =================
 st.caption("""
