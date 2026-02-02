@@ -4,6 +4,7 @@ import plotly.express as px
 import numpy as np
 import os
 import itertools
+from datetime import datetime
 
 # ================= LOAD NAV =================
 nav_df = pd.read_csv("fund_nav_5y.csv")
@@ -114,7 +115,15 @@ df = pd.DataFrame(rows)
 # ================= UI =================
 st.set_page_config(page_title="Fund Dashboard", layout="centered")
 st.title("📊 FPDP")
-
+# ===== SHOW LAST UPDATE TIME =====
+file_path = "fund_nav_5y.csv"
+if os.path.exists(file_path):
+    ts = os.path.getmtime(file_path)
+    last_update = datetime.fromtimestamp(ts)
+    st.caption(f"🕒 Last update: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
+else:
+    st.caption("⚠️ ไม่พบไฟล์ fund_nav_5y.csv")
+    
 # ================= EXPANDER: FILTER =================
 with st.expander("🔧 ตัวเลือกกองทุน / Timeframe", expanded=True):
     tf = st.radio("📅 Timeframe", timeframes, index=5, horizontal=True)
@@ -670,6 +679,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
