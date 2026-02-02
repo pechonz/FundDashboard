@@ -522,18 +522,64 @@ with tab_port:
         st.divider()
 
         # ================= Transaction History =================
-        st.subheader("✏️ แก้ไขรายการ Transaction")
+        st.subheader("✏️ แก้ไขรายการ Transaction (BUY / SELL / SWITCH)")
 
+        # ===== Load file =====
+        if not os.path.exists("transactions.csv"):
+            pd.DataFrame(columns=[
+                "trade_date","action",
+                "fund_from","fund_to",
+                "settle_from","settle_to",
+                "amount","price_from","price_to"
+            ]).to_csv("transactions.csv", index=False)
+        
+        tx_df = pd.read_csv("transactions.csv")
+        for c in ["trade_date","settle_from","settle_to"]:
+            tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
+        
+        # ===== Inline edit =====
         edited_df = st.data_editor(
             tx_df,
-            num_rows="dynamic",      # เพิ่ม/ลบแถวได้
+            num_rows="dynamic",
             use_container_width=True
         )
         
-        if st.button("💾 Save changes"):
+        # ===== Auto NAV =====
+        if st.button("🔄 ดึงราคาอัตโนมัติ"):
+            for i, r in edited_df.iterrows():
+        
+                if r["action"] in ["SELL","SWITCH"] and pd.notna(r["fund_from"]):
+                    d = pd.to_datetime(r["settle_from"])
+                    edited_df.loc[i,"price_from"] = get_nav_price(r["fund_from"], d)
+        
+                if r["action"] in ["BUY","SWITCH"] and pd.notna(r["fund_to"]):
+                    d = pd.to_datetime(r["settle_to"])
+                    edited_df.loc[i,"price_to"] = get_nav_price(r["fund_to"], d)
+        
+            st.success("อัปเดตราคาเรียบร้อย")
+        
+        # ===== Save =====
+        if st.button("💾 Save"):
             edited_df.to_csv("transactions.csv", index=False)
-            st.success("บันทึกการแก้ไขเรียบร้อย")
+            st.success("บันทึกแล้ว")
             st.rerun()
+        
+        # ===== Position Engine =====
+        st.subheader("📦 Position จาก Transaction จริง")
+        
+        if len(edited_df) > 0:
+            pos_df = explode_transactions(edited_df)
+            current_units = pos_df.groupby("fund")["units"].sum().reset_index()
+        
+            latest_nav = nav_df.sort_values("date").groupby("fund").tail(1)
+            current_units = current_units.merge(
+                latest_nav[["fund","nav"]],
+                on="fund",
+                how="left"
+            )
+            current_units["current_value"] = current_units["units"] * current_units["nav"]
+        
+            st.dataframe(current_units.round(4), use_container_width=True)
         # ----- show latest update of transaction.csv -----
         tx_file = "transactions.csv"
         if os.path.exists(tx_file):
@@ -727,6 +773,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
