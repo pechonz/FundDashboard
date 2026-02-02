@@ -191,22 +191,99 @@ with tab_pain:
 
 # ================= PORTFOLIO =================
 with tab_port:
+    # ---------- Load transactions ----------
     if not os.path.exists("transactions.csv"):
         pd.DataFrame(columns=["date","fund","amount","price"]).to_csv("transactions.csv", index=False)
-    tx_df=pd.read_csv("transactions.csv")
-    tx_df["date"]=pd.to_datetime(tx_df["date"], errors="coerce")
-    st.subheader("➕ Add Transaction")
+
+    tx_df = pd.read_csv("transactions.csv")
+    tx_df["date"] = pd.to_datetime(tx_df["date"], errors="coerce")
+
+    # ---------- Add Transaction ----------
+    st.subheader("➕ บันทึกการซื้อกองทุน")
     with st.form("add_tx"):
         tx_date = st.date_input("วันที่")
         tx_fund = st.selectbox("กองทุน", df["fund"].unique())
         tx_amount = st.number_input("เงินลงทุน", min_value=0.0)
         tx_price = st.number_input("ราคาต่อหน่วย", min_value=0.0)
         if st.form_submit_button("➕ เพิ่ม"):
-            new=pd.DataFrame([{"date":tx_date,"fund":tx_fund,"amount":tx_amount,"price":tx_price}])
-            tx_df=pd.concat([tx_df,new])
+            new = pd.DataFrame([{"date":tx_date,"fund":tx_fund,"amount":tx_amount,"price":tx_price}])
+            tx_df = pd.concat([tx_df,new])
             tx_df.to_csv("transactions.csv", index=False)
             st.success("บันทึกเรียบร้อย")
+
+    st.subheader("📜 ประวัติการซื้อขาย")
     st.dataframe(tx_df.sort_values("date", ascending=False), use_container_width=True)
+
+    # ---------- Portfolio Summary ----------
+    if len(tx_df) > 0:
+        tx_df["units"] = tx_df["amount"] / tx_df["price"]
+        port = tx_df.groupby("fund").agg({"amount":"sum","units":"sum"}).reset_index()
+        latest_nav = nav_df[nav_df["fund"].isin(port["fund"])].sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
+        port = port.merge(latest_nav, on="fund", how="left")
+        port["current_value"] = port["units"] * port["nav"]
+        port["profit"] = port["current_value"] - port["amount"]
+        port["profit_%"] = port["profit"] / port["amount"] * 100
+
+        # ---------- Merge Volatility ----------
+        risk_col = f"{tf}_Volatility_%"
+        port = port.merge(df[["fund", risk_col]], on="fund", how="left")
+        port["risk_weight"] = port["current_value"] * port[risk_col]
+
+        # Total row
+        total_amount = port["amount"].sum()
+        total_value = port["current_value"].sum()
+        total_profit = total_value - total_amount
+        total_profit_pct = total_profit / total_amount * 100
+        summary_row = pd.DataFrame([{
+            "fund":"TOTAL",
+            "amount": total_amount,
+            "units": np.nan,
+            "nav": np.nan,
+            "current_value": total_value,
+            "profit": total_profit,
+            "profit_%": total_profit_pct,
+            risk_col: np.nan,
+            "risk_weight": port["risk_weight"].sum()
+        }])
+        port_show = pd.concat([port, summary_row], ignore_index=True)
+
+        # ---------- Pie Charts ----------
+        st.subheader("🥧 Money Allocation (เงินอยู่ตรงไหน)")
+        fig_money = px.pie(port, values="current_value", names="fund", title="สัดส่วนเงินลงทุน")
+        st.plotly_chart(fig_money, use_container_width=True, height=350)
+
+        st.subheader("⚠️ Risk Exposure (ความเสี่ยงจาก Volatility)")
+        fig_risk = px.pie(port, values="risk_weight", names="fund", title=f"สัดส่วนความเสี่ยง ({tf} Volatility)")
+        st.plotly_chart(fig_risk, use_container_width=True, height=350)
+
+        # ---------- Portfolio NAV Curve ----------
+        st.subheader("📈 Portfolio NAV Curve (Equal Weight)")
+        nav_cut = nav_df[nav_df["fund"].isin(funds)]
+        df_norm, port_nav = build_equal_weight_nav(nav_cut, funds)
+        fig_nav = px.line(title="Portfolio vs Each Fund (Normalized = 100)")
+        for f in funds:
+            fig_nav.add_scatter(x=df_norm.index, y=df_norm[f], name=f, opacity=0.4)
+        fig_nav.add_scatter(x=port_nav.index, y=port_nav.values, name="PORTFOLIO", line=dict(width=4))
+        st.plotly_chart(fig_nav, use_container_width=True, height=400)
+
+        # ---------- Portfolio Volatility & Diversification ----------
+        st.subheader("🔗 Portfolio Risk & Diversification")
+        weights = port["current_value"] / port["current_value"].sum()
+        ret_use = nav_cut.pivot(index="date", columns="fund", values="nav")[weights.index].ffill().pct_change().dropna()
+        cov = ret_use.cov()
+        w = weights.values
+        port_var = np.dot(w.T, np.dot(cov, w))
+        port_vol = np.sqrt(port_var * 252)
+        indiv_vol = ret_use.std() * np.sqrt(252)
+        div_ratio = np.sum(w*indiv_vol)/port_vol
+
+        st.metric("Portfolio Volatility (Corr-adjusted)", f"{port_vol*100:.2f}%")
+        st.metric("Diversification Ratio", f"{div_ratio:.2f}")
+
+        # ---------- Portfolio Table ----------
+        st.subheader("📊 Portfolio Summary")
+        show_cols = ["fund","amount","current_value","profit","profit_%",risk_col]
+        st.dataframe(port_show[show_cols].round(2), use_container_width=True)
 
 # ================= DIVERSIFICATION =================
 with tab_diver:
@@ -216,3 +293,4 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
