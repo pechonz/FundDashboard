@@ -184,6 +184,10 @@ with tab_overview:
         showarrow=False,
         font=dict(size=12, color="red")
     )
+    fig_dd.update_layout(
+        legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+        margin=dict(t=50, b=80)
+    )
     st.plotly_chart(fig_dd, use_container_width=True, height=300)
 
     # ---------- Z-Score ----------
@@ -215,6 +219,10 @@ with tab_overview:
         text="📌 Z-Score = (NAV - MA60)/STD60\nสูง → overheat / ต่ำ → ซื้อ",
         showarrow=False,
         font=dict(size=12, color="purple")
+    )
+    fig_z.update_layout(
+        legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+        margin=dict(t=50, b=80)
     )
     st.plotly_chart(fig_z, use_container_width=True, height=300)
 
@@ -536,6 +544,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
