@@ -152,6 +152,10 @@ with tab_overview:
         showarrow=False,
         font=dict(size=12, color="blue")
     )
+    fig_nav.update_layout(
+        legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+        margin=dict(t=50, b=80)
+    )
     st.plotly_chart(fig_nav, use_container_width=True, height=300)
 
     # ---------- Drawdown ----------
@@ -284,7 +288,6 @@ with tab_overview:
         )
 
         st.plotly_chart(fig, use_container_width=True)
-
 
 # ================= MENTAL PAIN TAB =================
 with tab_pain:
@@ -533,6 +536,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
