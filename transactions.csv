@@ -1,9 +1,1 @@
-﻿date,fund,amount,price
-01/05/2026 00:00,K-WPULTIMATE,10000,10.0819
-,,,
-,,,
-,,,
-,,,
-,,,
-,,,
-,,,
+﻿trade_date,action,fund_from,fund_to,settle_from,settle_to,amount,price_from,price_to
