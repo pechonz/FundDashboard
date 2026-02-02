@@ -127,25 +127,87 @@ tab_overview, tab_pain, tab_port, tab_diver = st.tabs(
 )
 
 # ================= OVERVIEW =================
+# ================= OVERVIEW =================
 with tab_overview:
     st.subheader(f"Overview ({tf})")
+
     ycol = f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"
-    dfp = dff.dropna(subset=[ycol])
-    df_engine = dfp.copy()
-    for t in ["3M","6M","1Y","3Y"]: df_engine[t]=df_engine.apply(lambda r: recommend(r,t), axis=1)
-    df_engine["Final Action"] = df_engine.apply(multi_vote, axis=1)
-    st.subheader("🧭 Decision (Multi-Timeframe Voting)")
-    st.dataframe(df_engine[["fund","3M","6M","1Y","3Y","Final Action"]], use_container_width=True)
+    dfp = dff.dropna(subset=[ycol]).copy()
 
-    # Risk vs Return
-    fig = px.scatter(dfp, x=f"{tf}_Volatility_%", y=ycol, size=dfp[f"{tf}_MaxDD_%"].abs(), text="fund", title="Risk vs Return")
-    fig.update_traces(textposition="top center")
-    st.plotly_chart(fig, use_container_width=True, height=400)
+    if dfp.empty:
+        st.info("ไม่มีข้อมูลเพียงพอสำหรับ Overview Risk vs Return")
+    else:
+        # ================= DECISION ENGINE =================
+        df_engine = dfp.copy()
+        df_engine["3M"] = df_engine.apply(lambda r: recommend(r, "3M"), axis=1)
+        df_engine["6M"] = df_engine.apply(lambda r: recommend(r, "6M"), axis=1)
+        df_engine["1Y"] = df_engine.apply(lambda r: recommend(r, "1Y"), axis=1)
+        df_engine["3Y"] = df_engine.apply(lambda r: recommend(r, "3Y"), axis=1)
+        df_engine["Final Action"] = df_engine.apply(multi_vote, axis=1)
 
-    # Metrics
-    metric_cols = ["fund", ycol, f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
-    st.subheader("📊 Metrics")
-    st.dataframe(df_engine[metric_cols].round(2), use_container_width=True)
+        # ================= DECISION TABLE =================
+        st.subheader("🧭 Decision (Multi-Timeframe Voting)")
+        decision_cols = ["fund","3M","6M","1Y","3Y","Final Action"]
+        st.dataframe(df_engine[decision_cols], use_container_width=True)
+
+        # ================= RISK vs RETURN =================
+        fig = px.scatter(
+            dfp,
+            x=f"{tf}_Volatility_%",
+            y=ycol,
+            size=dfp[f"{tf}_MaxDD_%"].abs(),
+            color=ycol,
+            text="fund",
+            title="Risk vs Return",
+            hover_data={
+                "fund": True,
+                f"{tf}_Volatility_%": True,
+                ycol: True,
+                f"{tf}_MaxDD_%": True,
+                f"{tf}_Sharpe": True
+            },
+            color_continuous_scale="Viridis",
+        )
+
+        # Mean lines
+        xm = dfp[f"{tf}_Volatility_%"].mean()
+        ym = dfp[ycol].mean()
+        fig.add_vline(x=xm, line_dash="dash", line_color="gray", annotation_text="Avg Volatility", annotation_position="top left")
+        fig.add_hline(y=ym, line_dash="dash", line_color="gray", annotation_text="Avg Return", annotation_position="top right")
+
+        # Quadrant annotations
+        xmin = dfp[f"{tf}_Volatility_%"].min()
+        xmax = dfp[f"{tf}_Volatility_%"].max()
+        ymin = dfp[ycol].min()
+        ymax = dfp[ycol].max()
+
+        fig.add_annotation(x=(xmin+xm)/2, y=(ym+ymax)/2,
+            text="💎 ของดีหายาก\nกำไรดี เสี่ยงต่ำ", showarrow=False)
+        fig.add_annotation(x=(xm+xmax)/2, y=(ym+ymax)/2,
+            text="🏆 ตัวแรง\nโตไว ใจต้องนิ่ง", showarrow=False)
+        fig.add_annotation(x=(xmin+xm)/2, y=(ymin+ym)/2,
+            text="🧘 ปลอดภัย\nไม่รวยแต่ไม่เจ็บ", showarrow=False)
+        fig.add_annotation(x=(xm+xmax)/2, y=(ymin+ym)/2,
+            text="😵 เสี่ยงฟรี\nควรหลีกเลี่ยง", showarrow=False)
+
+        fig.update_traces(textposition="top center")
+        fig.update_layout(
+            xaxis_title="Volatility (%)",
+            yaxis_title="Return (%)",
+            legend_title=ycol
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # ================= METRICS =================
+        metric_cols = ["fund"]
+        if tf in ["MTD","YTD"]:
+            metric_cols += [f"{tf}_Return_%", f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
+        else:
+            metric_cols += [f"{tf}_CAGR_%", f"{tf}_Sharpe", f"{tf}_Volatility_%", f"{tf}_MaxDD_%"]
+
+        st.subheader(f"📊 Metrics ({tf})")
+        st.dataframe(df_engine[metric_cols].round(2), use_container_width=True)
 
     # NAV Curve
     st.subheader("📈 Fund NAV Curve")
@@ -429,6 +491,7 @@ with tab_diver:
     corr=df_ret.corr()
     fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
     st.plotly_chart(fig,use_container_width=True,height=400)
+
 
 
 
