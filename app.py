@@ -550,12 +550,126 @@ with tab_port:
 
 # ================= DIVERSIFICATION =================
 with tab_diver:
-    st.subheader("Correlation Heatmap")
-    nav_cut=nav_df.groupby("fund").apply(lambda x: filter_by_timeframe(x.set_index("date")["nav"], tf)).reset_index(name="nav")
-    df_ret=nav_cut[nav_cut["fund"].isin(funds)].pivot(index="date", columns="fund", values="nav").ffill().pct_change().dropna()
-    corr=df_ret.corr()
-    fig=px.imshow(corr,text_auto=".2f",color_continuous_scale="RdBu",zmin=-1,zmax=1)
-    st.plotly_chart(fig,use_container_width=True,height=400)
+    st.subheader(f"🔗 Diversification Analysis ({tf})")
+
+    # ----- เตรียม NAV ตาม timeframe แบบ robust -----
+    nav_cut = nav_df.groupby("fund").apply(
+        lambda x: filter_by_timeframe(
+            x.set_index("date")["nav"], tf
+        )
+    ).reset_index(name="nav")
+
+    nav_cut = nav_cut[nav_cut["fund"].isin(funds)]
+
+    if nav_cut.empty or len(funds) < 2:
+        st.info("กรุณาเลือกอย่างน้อย 2 กองทุน และต้องมีข้อมูล NAV เพียงพอ")
+    else:
+        # ----- Pivot เพื่อคำนวณ return -----
+        df_ret = nav_cut.pivot(index="date", columns="fund", values="nav").ffill().pct_change().dropna()
+
+        # ----- Guardrail: sample size -----
+        if len(df_ret) < 60:
+            st.warning("ข้อมูลน้อยเกินไป Correlation อาจไม่น่าเชื่อถือ (ควร ≥ 60 วัน)")
+
+        # ----- Correlation matrix -----
+        corr = df_ret.corr()
+
+        # ----- Heatmap -----
+        fig = px.imshow(
+            corr,
+            text_auto=".2f",
+            color_continuous_scale="RdBu",
+            zmin=-1, zmax=1,
+            title="Correlation Heatmap (Return)"
+        )
+        fig.update_layout(
+            legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+            margin=dict(t=50, b=80)
+        )
+        fig.add_annotation(
+            x=0.5, y=1.08,
+            xref="paper", yref="paper",
+            text="ใกล้ +1 = ไปทิศเดียวกัน | ใกล้ 0 = ไม่เกี่ยวกัน | ใกล้ -1 = สวนทางกัน",
+            showarrow=False,
+            font=dict(size=12)
+        )
+        st.plotly_chart(fig, use_container_width=True, height=350)
+
+        # ===== วิเคราะห์เป็นคู่ =====
+        def interpret_corr(val):
+            if val > 0.8: return "ซ้ำกันมาก"
+            elif val > 0.5: return "สัมพันธ์สูง"
+            elif val > 0.2: return "สัมพันธ์ต่ำ"
+            elif val > -0.2: return "แทบไม่เกี่ยว"
+            else: return "สวนทาง"
+
+        pairs = list(itertools.combinations(funds, 2))
+        results = []
+        for f1, f2 in pairs:
+            v = corr.loc[f1, f2]
+            results.append({
+                "คู่กอง": f"{f1} vs {f2}",
+                "Correlation": round(v,2),
+                "ความหมาย": interpret_corr(v)
+            })
+        result_df = pd.DataFrame(results)
+
+        st.subheader("📊 วิเคราะห์ความสัมพันธ์ของกองที่เลือก")
+        st.dataframe(result_df, use_container_width=True)
+
+        # ----- Portfolio Volatility (Correlation-adjusted) -----
+        latest_nav = nav_df.sort_values("date").groupby("fund").tail(1)
+        latest_nav = latest_nav[latest_nav["fund"].isin(funds)].set_index("fund")
+        weights = latest_nav["nav"] / latest_nav["nav"].sum()
+
+        # Align returns
+        ret_use = df_ret[weights.index].dropna()
+        cov = ret_use.cov()
+        w = weights.values
+        port_var = np.dot(w.T, np.dot(cov, w))
+        port_vol = np.sqrt(port_var * 252)
+
+        # Diversification Ratio
+        indiv_vol = ret_use.std() * np.sqrt(252)
+        weighted_avg = np.sum(w * indiv_vol)
+        div_ratio = weighted_avg / port_vol
+
+        # ----- Metrics display -----
+        st.metric("Portfolio Volatility (Corr-adjusted)", f"{port_vol*100:.2f}%")
+        st.metric("Diversification Ratio", f"{div_ratio:.2f}")
+
+        # ----- Insight -----
+        avg_corr = result_df["Correlation"].mean()
+        max_row = result_df.loc[result_df["Correlation"].idxmax()]
+        min_row = result_df.loc[result_df["Correlation"].idxmin()]
+
+        st.markdown("### 🧠 Insight รวม")
+        st.write(f"• ค่าเฉลี่ย Correlation: **{avg_corr:.2f}**")
+        st.write(f"• คู่ที่ซ้ำสุด: **{max_row['คู่กอง']} ({max_row['Correlation']})**")
+        st.write(f"• คู่ที่กระจายสุด: **{min_row['คู่กอง']} ({min_row['Correlation']})**")
+
+        if avg_corr > 0.7:
+            st.error("พอร์ตนี้ซ้ำสูงมาก → เสี่ยงพร้อมกัน")
+        elif avg_corr > 0.4:
+            st.warning("พอร์ตนี้ยังซ้ำพอสมควร → ควรเพิ่มกองที่อิสระกว่านี้")
+        else:
+            st.success("พอร์ตนี้กระจายตัวดี → ความเสี่ยงถ่วงกันได้")
+
+        st.markdown("""
+        ### 📌 วิธีอ่านค่า
+        **Portfolio Volatility (Corr-adjusted)**  
+        ความผันผวนของพอร์ตจริงทั้งระบบต่อปี  
+        > 10% = ปีปกติขึ้นลงราว ±10%  
+        > 15% = ปีปกติขึ้นลงราว ±15%  
+        > 20%+ = พอร์ตเหวี่ยงสูง ต้องรับความเสี่ยงได้
+
+        **Diversification Ratio**  
+        ระดับการกระจายความเสี่ยงจริงของพอร์ต  
+        > 1.0 = แทบไม่กระจาย (ซ้ำกัน)  
+        > 1.2 = กระจายพอใช้  
+        > 1.4 = กระจายดี  
+        > 1.6+ = กระจายระดับกองทุน
+        """)
 
 
 
