@@ -486,6 +486,7 @@ with tab_port:
     sell_edit["price_to"] = None
 
     # ---------------- SWITCH / SWAP ----------------
+    # ---------------- SWITCH / SWAP ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
     if switch_df.empty:
@@ -494,23 +495,26 @@ with tab_port:
             "settle_from","settle_to","amount",
             "price_from","price_to","action"
         ])
+    
+    # แปลงทุก column วันเป็น date picker
     for c in ["trade_date","settle_from","settle_to"]:
+        # ปลอดภัยกับ NaT
+        switch_df[c] = pd.to_datetime(switch_df[c], errors="coerce")
         switch_df[c] = switch_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
-
+    
     switch_edit = st.data_editor(
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
         num_rows="dynamic",
         key="switch_editor",
         use_container_width=True
     )
+    
+    # กำหนด action
     switch_edit["action"] = "SWITCH"
-
-    # ---------------- Combine ----------------
-    edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
-
-    # แปลง date picker กลับเป็น datetime64[ns]
+    
+    # หลังแก้ไข แปลงกลับเป็น datetime64[ns]
     for c in ["trade_date","settle_from","settle_to"]:
-        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
+        switch_edit[c] = pd.to_datetime(switch_edit[c], errors="coerce")
 
     # เรียง column ให้เหมือนต้นฉบับ
     edited_df = edited_df[tx_df.columns]
