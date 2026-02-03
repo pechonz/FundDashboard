@@ -30,7 +30,8 @@ def explode_transactions(tx_df):
 
     for _, r in tx_df.iterrows():
 
-        if r["action"] == "BUY":
+        # BUY
+        if r["action"] == "BUY" and pd.notna(r["price_to"]):
             units = r["amount"] / r["price_to"]
             rows.append({
                 "date": r["settle_to"],
@@ -38,7 +39,8 @@ def explode_transactions(tx_df):
                 "units": units
             })
 
-        elif r["action"] == "SELL":
+        # SELL
+        elif r["action"] == "SELL" and pd.notna(r["price_from"]):
             units = - r["amount"] / r["price_from"]
             rows.append({
                 "date": r["settle_from"],
@@ -46,24 +48,24 @@ def explode_transactions(tx_df):
                 "units": units
             })
 
-        elif r["action"] == "SWAP":
-            # leg ออก
-            units_out = - r["amount"] / r["price_from"]
-            rows.append({
-                "date": r["settle_from"],
-                "fund": r["fund_from"],
-                "units": units_out
-            })
-            # leg เข้า
-            units_in = r["amount"] / r["price_to"]
-            rows.append({
-                "date": r["settle_to"],
-                "fund": r["fund_to"],
-                "units": units_in
-            })
+        # SWITCH (รองรับทั้ง SWITCH และ SWAP)
+        elif r["action"] in ["SWITCH","SWAP"]:
+            if pd.notna(r["price_from"]):
+                units_out = - r["amount"] / r["price_from"]
+                rows.append({
+                    "date": r["settle_from"],
+                    "fund": r["fund_from"],
+                    "units": units_out
+                })
+            if pd.notna(r["price_to"]):
+                units_in = r["amount"] / r["price_to"]
+                rows.append({
+                    "date": r["settle_to"],
+                    "fund": r["fund_to"],
+                    "units": units_in
+                })
 
     return pd.DataFrame(rows)
-
     
 def calc_metrics(nav, rf=0.02):
     returns = nav.pct_change().dropna()
@@ -632,6 +634,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
