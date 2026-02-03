@@ -446,6 +446,22 @@ with tab_port:
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
+    # ================= Transaction Table (โชว์เสมอ) =================
+    st.subheader("✏️ Transaction Manager")
+
+    edited_df = st.data_editor(
+        tx_df,
+        num_rows="dynamic",
+        use_container_width=True
+    )
+
+    if st.button("💾 Save"):
+        edited_df.to_csv("transactions.csv", index=False)
+        st.success("บันทึกแล้ว")
+        st.rerun()
+
+    st.divider()
+
     # ================= Filter NAV =================
     nav_cut = nav_df[nav_df["fund"].isin(funds)].copy()
     nav_cut = nav_cut.groupby("fund").apply(
@@ -454,169 +470,45 @@ with tab_port:
         )
     ).reset_index(name="nav")
 
-    # ================= Explode Engine =================
-    def explode_transactions(tx):
-        rows = []
-
-        for _, r in tx.iterrows():
-
-            # BUY
-            if r["action"] == "BUY" and pd.notna(r["price_to"]):
-                units = r["amount"] / r["price_to"]
-                rows.append({
-                    "fund": r["fund_to"],
-                    "units": units
-                })
-
-            # SELL
-            if r["action"] == "SELL" and pd.notna(r["price_from"]):
-                units = r["amount"] / r["price_from"]
-                rows.append({
-                    "fund": r["fund_from"],
-                    "units": -units
-                })
-
-            # SWITCH
-            if r["action"] == "SWITCH":
-                if pd.notna(r["price_from"]):
-                    units = r["amount"] / r["price_from"]
-                    rows.append({
-                        "fund": r["fund_from"],
-                        "units": -units
-                    })
-                if pd.notna(r["price_to"]):
-                    units = r["amount"] / r["price_to"]
-                    rows.append({
-                        "fund": r["fund_to"],
-                        "units": units
-                    })
-
-        return pd.DataFrame(rows)
-
     # ================= Portfolio Engine =================
-    if len(tx_df) > 0 and len(nav_cut) > 0:
+    if len(edited_df) == 0:
+        st.info("ยังไม่มี Transaction → เพิ่มรายการก่อน")
+        st.stop()
 
-        pos_df = explode_transactions(tx_df)
+    pos_df = explode_transactions(edited_df)
 
-        if len(pos_df) == 0:
-            st.warning("ยังไม่มี transaction ที่มีราคาครบ")
-            st.stop()
+    if len(pos_df) == 0:
+        st.warning("Transaction ยังไม่สมบูรณ์ (ขาดราคา / วันที่)")
+        st.stop()
 
-        port = pos_df.groupby("fund")["units"].sum().reset_index()
-        port = port[port["fund"].isin(funds)]
+    port = (
+        pos_df.groupby("fund")["units"]
+        .sum()
+        .reset_index()
+    )
 
-        # latest nav
-        latest_nav = nav_cut.sort_values("date") \
-                            .groupby("fund") \
-                            .tail(1)[["fund","nav"]]
+    port = port[port["fund"].isin(funds)]
 
-        port = port.merge(latest_nav, on="fund", how="left")
-        port["current_value"] = port["units"] * port["nav"]
+    latest_nav = nav_cut.sort_values("date") \
+                        .groupby("fund") \
+                        .tail(1)[["fund","nav"]]
 
-        # cost basis
-        cost = []
-        for f in port["fund"]:
-            buys = tx_df[tx_df["fund_to"] == f]["amount"].sum()
-            sells = tx_df[tx_df["fund_from"] == f]["amount"].sum()
-            cost.append(buys - sells)
+    port = port.merge(latest_nav, on="fund", how="left")
+    port["current_value"] = port["units"] * port["nav"]
 
-        port["amount"] = cost
-        port["profit"] = port["current_value"] - port["amount"]
-        port["profit_%"] = port["profit"] / port["amount"] * 100
+    # cost basis
+    cost = []
+    for f in port["fund"]:
+        buys = edited_df[edited_df["fund_to"] == f]
+        sells = edited_df[edited_df["fund_from"] == f]
+        cost.append(buys["amount"].sum() - sells["amount"].sum())
 
-        # Risk
-        risk_col = f"{tf}_Volatility_%"
-        vol_cols = df[["fund", risk_col]]
-        port = port.merge(vol_cols, on="fund", how="left")
-        port["risk_weight"] = port["current_value"] * port[risk_col]
+    port["amount"] = cost
+    port["profit"] = port["current_value"] - port["amount"]
+    port["profit_%"] = port["profit"] / port["amount"] * 100
 
-        # Summary
-        summary_row = pd.DataFrame([{
-            "fund": "TOTAL",
-            "units": np.nan,
-            "nav": np.nan,
-            "current_value": port["current_value"].sum(),
-            "amount": port["amount"].sum(),
-            "profit": port["profit"].sum(),
-            "profit_%": port["profit"].sum() / port["amount"].sum() * 100,
-            risk_col: np.nan,
-            "risk_weight": port["risk_weight"].sum()
-        }])
-
-        port_show = pd.concat([port, summary_row], ignore_index=True)
-
-        st.subheader("📊 Portfolio Summary")
-        st.dataframe(port_show.round(4), use_container_width=True)
-
-        st.divider()
-
-        # ================= Money & Risk Pie =================
-        c1, c2 = st.columns(2)
-
-        with c1:
-            fig1 = px.pie(
-                port,
-                values="current_value",
-                names="fund",
-                title="🥧 Money Allocation"
-            )
-            st.plotly_chart(fig1, use_container_width=True)
-
-        with c2:
-            fig2 = px.pie(
-                port,
-                values="risk_weight",
-                names="fund",
-                title="⚠️ Risk Exposure"
-            )
-            st.plotly_chart(fig2, use_container_width=True)
-
-        st.divider()
-
-        # ================= Transaction Manager =================
-        st.subheader("✏️ Transaction Manager")
-
-        edited_df = st.data_editor(
-            tx_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            column_config={
-                "action": st.column_config.SelectboxColumn(
-                    "Action",
-                    options=["BUY","SELL","SWITCH"]
-                ),
-                "fund_from": st.column_config.SelectboxColumn(
-                    "From", options=df["fund"].unique()
-                ),
-                "fund_to": st.column_config.SelectboxColumn(
-                    "To", options=df["fund"].unique()
-                )
-            }
-        )
-
-        # ===== Auto price =====
-        if st.button("🔄 ดึงราคาอัตโนมัติ"):
-            for i, r in edited_df.iterrows():
-
-                if r["action"] in ["SELL","SWITCH"] and pd.notna(r["fund_from"]):
-                    d = pd.to_datetime(r["settle_from"])
-                    edited_df.loc[i,"price_from"] = get_nav_price(
-                        r["fund_from"], d
-                    )
-
-                if r["action"] in ["BUY","SWITCH"] and pd.notna(r["fund_to"]):
-                    d = pd.to_datetime(r["settle_to"])
-                    edited_df.loc[i,"price_to"] = get_nav_price(
-                        r["fund_to"], d
-                    )
-
-            st.success("อัปเดตราคาแล้ว")
-
-        # ===== Save =====
-        if st.button("💾 Save"):
-            edited_df.to_csv("transactions.csv", index=False)
-            st.success("บันทึกแล้ว")
-            st.rerun()
+    st.subheader("📊 Portfolio Summary")
+    st.dataframe(port.round(4), use_container_width=True)
             
 # ================= DIVERSIFICATION =================
 with tab_diver:
@@ -740,6 +632,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
