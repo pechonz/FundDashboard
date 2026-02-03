@@ -448,7 +448,7 @@ with tab_port:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
     st.subheader("✏️ Transaction Manager (แยกตาราง)")
-    
+
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
@@ -490,7 +490,7 @@ with tab_port:
 
     # ---------------- Combine ----------------
     edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
-    edited_df = edited_df[tx_df.columns]  # ให้เรียง column เดิม
+    edited_df = edited_df[tx_df.columns]  # เรียง column เดิม
 
     if st.button("💾 Save"):
         edited_df.to_csv("transactions.csv", index=False)
@@ -652,6 +652,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
