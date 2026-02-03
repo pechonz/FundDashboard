@@ -426,15 +426,54 @@ with tab_port:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
     # ================= Transaction Table (โชว์เสมอ) =================
+    # ================= Transaction Table =================
     st.subheader("✏️ Transaction Manager")
-
+    
+    from streamlit.column_config import SelectboxColumn
+    
+    # reload ทุกครั้ง
+    tx_df = pd.read_csv("transactions.csv")
+    for c in ["trade_date","settle_from","settle_to"]:
+        tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
+    
     edited_df = st.data_editor(
         tx_df,
         num_rows="dynamic",
-        use_container_width=True
+        use_container_width=True,
+        column_config={
+            "action": SelectboxColumn(
+                "Action",
+                options=["BUY","SELL","SWAP"]
+            )
+        }
     )
-
+    
+    # ---------- Auto NAV ----------
+    if st.button("🔄 ดึงราคาอัตโนมัติ"):
+        for i, r in edited_df.iterrows():
+    
+            if r["action"] in ["SELL","SWAP"] and pd.notna(r["fund_from"]):
+                d = pd.to_datetime(r["settle_from"])
+                edited_df.loc[i,"price_from"] = get_nav_price(
+                    r["fund_from"], d
+                )
+    
+            if r["action"] in ["BUY","SWAP"] and pd.notna(r["fund_to"]):
+                d = pd.to_datetime(r["settle_to"])
+                edited_df.loc[i,"price_to"] = get_nav_price(
+                    r["fund_to"], d
+                )
+    
+        st.success("อัปเดตราคาแล้ว")
+    
+    # ---------- Save ----------
     if st.button("💾 Save"):
+    
+        valid_actions = ["BUY","SELL","SWAP"]
+        if not edited_df["action"].isin(valid_actions).all():
+            st.error("Action ต้องเป็น BUY / SELL / SWAP เท่านั้น")
+            st.stop()
+    
         edited_df.to_csv("transactions.csv", index=False)
         st.success("บันทึกแล้ว")
         st.rerun()
@@ -611,6 +650,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
