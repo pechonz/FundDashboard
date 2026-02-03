@@ -444,8 +444,8 @@ with tab_port:
         ]).to_csv("transactions.csv", index=False)
 
     tx_df = pd.read_csv("transactions.csv")
-    
-    # แปลง datetime columns
+
+    # ================= Convert datetime columns =================
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
@@ -454,9 +454,8 @@ with tab_port:
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
-    # แปลงเป็น date สำหรับ picker
     for c in ["trade_date","settle_to"]:
-        buy_df[c] = buy_df[c].dt.date
+        buy_df[c] = buy_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
     buy_edit = st.data_editor(
         buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
@@ -473,7 +472,7 @@ with tab_port:
     st.markdown("### 🔴 SELL")
     sell_df = tx_df[tx_df["action"]=="SELL"].copy()
     for c in ["trade_date","settle_from"]:
-        sell_df[c] = sell_df[c].dt.date
+        sell_df[c] = sell_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
     sell_edit = st.data_editor(
         sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
@@ -496,7 +495,7 @@ with tab_port:
             "price_from","price_to","action"
         ])
     for c in ["trade_date","settle_from","settle_to"]:
-        switch_df[c] = switch_df[c].dt.date
+        switch_df[c] = switch_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
     switch_edit = st.data_editor(
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
@@ -509,11 +508,11 @@ with tab_port:
     # ---------------- Combine ----------------
     edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
 
-    # แปลง date picker กลับเป็น datetime
+    # แปลง date picker กลับเป็น datetime64[ns]
     for c in ["trade_date","settle_from","settle_to"]:
-        edited_df[c] = pd.to_datetime(edited_df[c])
+        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
 
-    # ให้ column เรียงเหมือนต้นฉบับ
+    # เรียง column ให้เหมือนต้นฉบับ
     edited_df = edited_df[tx_df.columns]
 
     if st.button("💾 Save"):
@@ -676,6 +675,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
