@@ -444,18 +444,53 @@ with tab_port:
         ]).to_csv("transactions.csv", index=False)
 
     tx_df = pd.read_csv("transactions.csv")
-
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
-    # ================= Transaction Table (โชว์เสมอ) =================
-    st.subheader("✏️ Transaction Manager")
-
-    edited_df = st.data_editor(
-        tx_df,
+    st.subheader("✏️ Transaction Manager (แยกตาราง)")
+    
+    # ---------------- BUY ----------------
+    st.markdown("### 🟢 BUY")
+    buy_df = tx_df[tx_df["action"]=="BUY"].copy()
+    buy_edit = st.data_editor(
+        buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
         num_rows="dynamic",
+        key="buy_editor",
         use_container_width=True
     )
+    buy_edit["action"] = "BUY"
+    buy_edit["fund_from"] = None
+    buy_edit["settle_from"] = None
+    buy_edit["price_from"] = None
+
+    # ---------------- SELL ----------------
+    st.markdown("### 🔴 SELL")
+    sell_df = tx_df[tx_df["action"]=="SELL"].copy()
+    sell_edit = st.data_editor(
+        sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
+        num_rows="dynamic",
+        key="sell_editor",
+        use_container_width=True
+    )
+    sell_edit["action"] = "SELL"
+    sell_edit["fund_to"] = None
+    sell_edit["settle_to"] = None
+    sell_edit["price_to"] = None
+
+    # ---------------- SWITCH / SWAP ----------------
+    st.markdown("### 🔄 SWITCH / SWAP")
+    switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
+    switch_edit = st.data_editor(
+        switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
+        num_rows="dynamic",
+        key="switch_editor",
+        use_container_width=True
+    )
+    switch_edit["action"] = "SWITCH"  # default
+
+    # ---------------- Combine ----------------
+    edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
+    edited_df = edited_df[tx_df.columns]  # ให้เรียง column เดิม
 
     if st.button("💾 Save"):
         edited_df.to_csv("transactions.csv", index=False)
@@ -464,37 +499,20 @@ with tab_port:
 
     st.divider()
 
-    # ================= Filter NAV =================
-    nav_cut = nav_df[nav_df["fund"].isin(funds)].copy()
-    nav_cut = nav_cut.groupby("fund").apply(
-        lambda x: filter_by_timeframe(
-            x.set_index("date")["nav"], tf
-        )
-    ).reset_index(name="nav")
-
     # ================= Portfolio Engine =================
     if len(edited_df) == 0:
         st.info("ยังไม่มี Transaction → เพิ่มรายการก่อน")
         st.stop()
 
     pos_df = explode_transactions(edited_df)
-
     if len(pos_df) == 0:
         st.warning("Transaction ยังไม่สมบูรณ์ (ขาดราคา / วันที่)")
         st.stop()
 
-    port = (
-        pos_df.groupby("fund")["units"]
-        .sum()
-        .reset_index()
-    )
-
+    # ================= Portfolio Summary =================
+    port = pos_df.groupby("fund")["units"].sum().reset_index()
     port = port[port["fund"].isin(funds)]
-
-    latest_nav = nav_cut.sort_values("date") \
-                        .groupby("fund") \
-                        .tail(1)[["fund","nav"]]
-
+    latest_nav = nav_df[nav_df["fund"].isin(funds)].sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
     port = port.merge(latest_nav, on="fund", how="left")
     port["current_value"] = port["units"] * port["nav"]
 
@@ -634,6 +652,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
