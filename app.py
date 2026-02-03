@@ -444,6 +444,8 @@ with tab_port:
         ]).to_csv("transactions.csv", index=False)
 
     tx_df = pd.read_csv("transactions.csv")
+    
+    # แปลง datetime columns
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
@@ -452,6 +454,10 @@ with tab_port:
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
+    # แปลงเป็น date สำหรับ picker
+    for c in ["trade_date","settle_to"]:
+        buy_df[c] = buy_df[c].dt.date
+
     buy_edit = st.data_editor(
         buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
         num_rows="dynamic",
@@ -466,6 +472,9 @@ with tab_port:
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
     sell_df = tx_df[tx_df["action"]=="SELL"].copy()
+    for c in ["trade_date","settle_from"]:
+        sell_df[c] = sell_df[c].dt.date
+
     sell_edit = st.data_editor(
         sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
         num_rows="dynamic",
@@ -479,34 +488,33 @@ with tab_port:
 
     # ---------------- SWITCH / SWAP ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
-    
-    # ใช้ column ครบทั้งหมดที่ต้องกรอก
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
-    
-    # ถ้าไม่มี row ให้สร้าง placeholder
     if switch_df.empty:
         switch_df = pd.DataFrame(columns=[
             "trade_date","fund_from","fund_to",
             "settle_from","settle_to","amount",
             "price_from","price_to","action"
         ])
-    
+    for c in ["trade_date","settle_from","settle_to"]:
+        switch_df[c] = switch_df[c].dt.date
+
     switch_edit = st.data_editor(
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
         num_rows="dynamic",
         key="switch_editor",
         use_container_width=True
     )
-    
-    # เติมค่า action
     switch_edit["action"] = "SWITCH"
-    
-    # ถ้าต้องการ merge กลับ ต้องใส่ column ให้ครบเหมือนเดิม
-    switch_edit["trade_date"] = pd.to_datetime(switch_edit["trade_date"], errors="coerce")
 
     # ---------------- Combine ----------------
     edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
-    edited_df = edited_df[tx_df.columns]  # เรียง column เดิม
+
+    # แปลง date picker กลับเป็น datetime
+    for c in ["trade_date","settle_from","settle_to"]:
+        edited_df[c] = pd.to_datetime(edited_df[c])
+
+    # ให้ column เรียงเหมือนต้นฉบับ
+    edited_df = edited_df[tx_df.columns]
 
     if st.button("💾 Save"):
         edited_df.to_csv("transactions.csv", index=False)
@@ -668,6 +676,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
