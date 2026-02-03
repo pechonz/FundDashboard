@@ -479,14 +479,30 @@ with tab_port:
 
     # ---------------- SWITCH / SWAP ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
+    
+    # ใช้ column ครบทั้งหมดที่ต้องกรอก
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
+    
+    # ถ้าไม่มี row ให้สร้าง placeholder
+    if switch_df.empty:
+        switch_df = pd.DataFrame(columns=[
+            "trade_date","fund_from","fund_to",
+            "settle_from","settle_to","amount",
+            "price_from","price_to","action"
+        ])
+    
     switch_edit = st.data_editor(
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
         num_rows="dynamic",
         key="switch_editor",
         use_container_width=True
     )
-    switch_edit["action"] = "SWITCH"  # default
+    
+    # เติมค่า action
+    switch_edit["action"] = "SWITCH"
+    
+    # ถ้าต้องการ merge กลับ ต้องใส่ column ให้ครบเหมือนเดิม
+    switch_edit["trade_date"] = pd.to_datetime(switch_edit["trade_date"], errors="coerce")
 
     # ---------------- Combine ----------------
     edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
@@ -652,6 +668,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
