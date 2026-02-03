@@ -25,24 +25,45 @@ def get_nav_price(fund, date):
     return round(df.iloc[0]["nav"], 4)
 
 # ================= EXPLODE ENGINE =================
-def explode_transactions(tx):
+def explode_transactions(tx_df):
     rows = []
-    for _, r in tx.iterrows():
+
+    for _, r in tx_df.iterrows():
+
         if r["action"] == "BUY":
             units = r["amount"] / r["price_to"]
-            rows.append([r["trade_date"], r["fund_to"], units])
+            rows.append({
+                "date": r["settle_to"],
+                "fund": r["fund_to"],
+                "units": units
+            })
 
         elif r["action"] == "SELL":
             units = - r["amount"] / r["price_from"]
-            rows.append([r["trade_date"], r["fund_from"], units])
+            rows.append({
+                "date": r["settle_from"],
+                "fund": r["fund_from"],
+                "units": units
+            })
 
-        elif r["action"] == "SWITCH":
-            out_units = - r["amount"] / r["price_from"]
-            in_units  =   r["amount"] / r["price_to"]
-            rows.append([r["trade_date"], r["fund_from"], out_units])
-            rows.append([r["trade_date"], r["fund_to"],   in_units])
+        elif r["action"] == "SWAP":
+            # leg ออก
+            units_out = - r["amount"] / r["price_from"]
+            rows.append({
+                "date": r["settle_from"],
+                "fund": r["fund_from"],
+                "units": units_out
+            })
+            # leg เข้า
+            units_in = r["amount"] / r["price_to"]
+            rows.append({
+                "date": r["settle_to"],
+                "fund": r["fund_to"],
+                "units": units_in
+            })
 
-    return pd.DataFrame(rows, columns=["trade_date","fund","units"])
+    return pd.DataFrame(rows)
+
     
 def calc_metrics(nav, rf=0.02):
     returns = nav.pct_change().dropna()
@@ -650,6 +671,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
