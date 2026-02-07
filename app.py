@@ -545,6 +545,22 @@ with tab_port:
     port["profit"] = port["current_value"] - port["amount"]
     port["profit_%"] = port["profit"] / port["amount"] * 100
 
+    # ================= ADD TOTAL ROW =================
+    total_row = pd.DataFrame([{
+        "fund": "TOTAL",
+        "units": port["units"].sum(),
+        "nav": None,
+        "current_value": port["current_value"].sum(),
+        "amount": port["amount"].sum(),
+        "profit": port["profit"].sum(),
+        "profit_%": (
+            port["profit"].sum() / port["amount"].sum() * 100
+            if port["amount"].sum() != 0 else 0
+        )
+    }])
+    
+    port = pd.concat([port, total_row], ignore_index=True)
+
     st.subheader("📊 Portfolio Summary")
     st.dataframe(port.round(2), use_container_width=True)
 
@@ -715,6 +731,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
