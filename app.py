@@ -17,27 +17,36 @@ nav_df["date"] = pd.to_datetime(nav_df["date"], errors="coerce")
 nav_df = nav_df.sort_values(["fund","date"])
 
 # ================= FUNCTIONS =================
+@st.cache_data(ttl=30)
 def load_data():
     creds = Credentials.from_service_account_info(
         st.secrets["gcp"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"]
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
     )
-    client = gspread.authorize(creds)
-    sheet = client.open_by_url(SHEET_URL).sheet1
-    data = sheet.get_all_records()
+    gc = gspread.authorize(creds)
+    sh = gc.open("fund_transactions")
+    ws = sh.sheet1
+    data = ws.get_all_records()
     return pd.DataFrame(data)
+
 
 def save_data(df):
     creds = Credentials.from_service_account_info(
         st.secrets["gcp"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"]
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
     )
-    client = gspread.authorize(creds)
-    sheet = client.open_by_url(SHEET_URL).sheet1
-    sheet.clear()
-    sheet.update([df.columns.tolist()] + df.values.tolist())
+    gc = gspread.authorize(creds)
+    sh = gc.open("fund_transactions")
+    ws = sh.sheet1
+
+    ws.clear()
+    ws.update([df.columns.tolist()] + df.fillna("").values.tolist())
 # ================= NAV FUNCTION =================
 def get_nav_price(fund, trade_date, nav_df):
     if pd.isna(fund) or pd.isna(trade_date):
@@ -405,10 +414,10 @@ with tab_port:
     ]
 
     # ================= LOAD FROM GOOGLE SHEET =================
-    if "tx_store" not in st.session_state:
-        st.session_state["tx_store"] = load_data()
-
-    tx_df = st.session_state["tx_store"]
+    tx_df = load_data()
+    
+    if tx_df.empty:
+        tx_df = pd.DataFrame(columns=COLS)
 
     if tx_df.empty:
         tx_df = pd.DataFrame(columns=COLS)
@@ -437,8 +446,6 @@ with tab_port:
         elif row["action"] == "SWITCH":
             edited_df.at[i, "price_from"] = get_nav_price(row["fund_from"], d, nav_df)
             edited_df.at[i, "price_to"]   = get_nav_price(row["fund_to"], d, nav_df)
-
-    st.session_state["tx_store"] = edited_df.copy()
 
     # ================= Portfolio Engine =================
     if len(edited_df) > 0:
@@ -616,19 +623,18 @@ with tab_port:
             )
 
     # auto memory
-    st.session_state["tx_store"] = edited_df.copy()
     col1, col2 = st.columns(2)
-    
+
     with col1:
         if st.button("💾 Save"):
             save_data(edited_df)
-            st.success("บันทึกลง Google Sheet แล้ว (ทุกอุปกรณ์เห็นเหมือนกัน)")
+            st.success("บันทึกลง Google Sheet แล้ว")
+            st.rerun()   # ดึงข้อมูลใหม่จาก sheet ทันที
     
     with col2:
         if st.button("🗑️ Reset All"):
             empty = pd.DataFrame(columns=COLS)
             save_data(empty)
-            st.session_state["tx_store"] = empty
             st.warning("ล้างข้อมูลทั้งหมดแล้ว")
             st.rerun()
 
@@ -755,72 +761,3 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
