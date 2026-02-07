@@ -27,7 +27,7 @@ def load_data():
         ]
     )
     gc = gspread.authorize(creds)
-    sh = gc.open("fund_transactions")
+    sh = gc.open("transactions")
     ws = sh.sheet1
     data = ws.get_all_records()
     return pd.DataFrame(data)
@@ -761,4 +761,5 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
