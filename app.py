@@ -580,8 +580,10 @@ with tab_port:
     # ================= Money Pie =================
     st.subheader("🥧 Money Allocation (เงินอยู่ตรงไหน)")
     
+    port_no_total = port[port["fund"] != "TOTAL"]
+    
     fig1 = px.pie(
-        port,
+        port_no_total,
         values="current_value",
         names="fund",
         title="สัดส่วนเงินลงทุนปัจจุบัน"
@@ -731,6 +733,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
