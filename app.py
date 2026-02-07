@@ -5,8 +5,10 @@ import numpy as np
 import os
 import itertools
 from datetime import datetime
-import streamlit as st
-st.write(st.secrets["gcp"]["client_email"])
+import gspread
+from google.oauth2.service_account import Credentials
+
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1rPF7yvVHpZtqewgdnXPE9u5slxlYgnV-epEla3svG0s"
 
 # ================= LOAD NAV =================
 url = "https://raw.githubusercontent.com/pechonz/FundDashboard/main/fund_nav_5y.csv"
@@ -15,7 +17,27 @@ nav_df["date"] = pd.to_datetime(nav_df["date"], errors="coerce")
 nav_df = nav_df.sort_values(["fund","date"])
 
 # ================= FUNCTIONS =================
+def load_data():
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"]
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open_by_url(SHEET_URL).sheet1
+    data = sheet.get_all_records()
+    return pd.DataFrame(data)
 
+def save_data(df):
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"]
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open_by_url(SHEET_URL).sheet1
+    sheet.clear()
+    sheet.update([df.columns.tolist()] + df.values.tolist())
 # ================= NAV FUNCTION =================
 def get_nav_price(fund, trade_date, nav_df):
     if pd.isna(fund) or pd.isna(trade_date):
@@ -375,7 +397,6 @@ with tab_overview:
 with tab_port:
     st.subheader(f"Portfolio Overview ({tf})")
 
-    FILE = "transactions.csv"
     COLS = [
         "trade_date","action",
         "fund_from","fund_to",
@@ -383,14 +404,14 @@ with tab_port:
         "amount","price_from","price_to"
     ]
 
-    # ================= INIT STORAGE =================
-    if not os.path.exists(FILE):
-        pd.DataFrame(columns=COLS).to_csv(FILE, index=False)
-
+    # ================= LOAD FROM GOOGLE SHEET =================
     if "tx_store" not in st.session_state:
-        st.session_state["tx_store"] = pd.read_csv(FILE)
+        st.session_state["tx_store"] = load_data()
 
     tx_df = st.session_state["tx_store"]
+
+    if tx_df.empty:
+        tx_df = pd.DataFrame(columns=COLS)
 
     tx_df["action"] = tx_df["action"].astype(str).str.strip().str.upper()
     tx_df = tx_df.dropna(subset=["action"])
@@ -405,9 +426,6 @@ with tab_port:
 
     edited_df = pd.concat([buy_df, sell_df, switch_df], ignore_index=True)
     edited_df = edited_df[COLS]
-
-    for c in ["trade_date","settle_from","settle_to"]:
-        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
 
     # ================= AUTO PRICE =================
     for i, row in edited_df.iterrows():
@@ -599,18 +617,17 @@ with tab_port:
 
     # auto memory
     st.session_state["tx_store"] = edited_df.copy()
-
     col1, col2 = st.columns(2)
-
+    
     with col1:
         if st.button("💾 Save"):
-            edited_df.to_csv(FILE, index=False)
-            st.success("บันทึกแล้ว (ราคาอ้างอิง NAV จริง)")
-
+            save_data(edited_df)
+            st.success("บันทึกลง Google Sheet แล้ว (ทุกอุปกรณ์เห็นเหมือนกัน)")
+    
     with col2:
         if st.button("🗑️ Reset All"):
             empty = pd.DataFrame(columns=COLS)
-            empty.to_csv(FILE, index=False)
+            save_data(empty)
             st.session_state["tx_store"] = empty
             st.warning("ล้างข้อมูลทั้งหมดแล้ว")
             st.rerun()
@@ -738,6 +755,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
