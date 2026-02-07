@@ -467,11 +467,13 @@ with tab_port:
             key="buy_editor",
             use_container_width=True,
             column_config={
-            "fund_to": st.column_config.SelectboxColumn(
-                "Fund",
-                options=funds
-            )
-        }
+                "fund_to": st.column_config.SelectboxColumn(
+                    "Fund",
+                    options=fund_list
+                )
+            }
+        )
+
     )
     buy_edit["action"] = "BUY"
     buy_edit["fund_from"] = None
@@ -709,6 +711,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
