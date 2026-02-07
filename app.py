@@ -460,19 +460,19 @@ with tab_port:
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
     for c in ["trade_date","settle_to"]:
         buy_df[c] = buy_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
-
-        buy_edit = st.data_editor(
-            buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
-            num_rows="dynamic",
-            key="buy_editor",
-            use_container_width=True,
-            column_config={
-                "fund_to": st.column_config.SelectboxColumn(
-                    "Fund",
-                    options=funds
-                )
-            }
-        )
+    buy_edit = st.data_editor(
+        buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
+        num_rows="dynamic",
+        key="buy_editor",
+        use_container_width=True,
+        column_config={
+            "fund_to": st.column_config.SelectboxColumn(
+                "Fund",
+                options=funds
+            )
+        }
+    )
+        
     buy_edit["action"] = "BUY"
     buy_edit["fund_from"] = None
     buy_edit["settle_from"] = None
@@ -485,16 +485,16 @@ with tab_port:
         sell_df[c] = sell_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
     sell_edit = st.data_editor(
-    sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
-        num_rows="dynamic",
-        key="sell_editor",
-        use_container_width=True,
-        column_config={
-            "fund_from": st.column_config.SelectboxColumn(
-                "Fund",
-                options=funds
-            )
-        }
+        sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
+            num_rows="dynamic",
+            key="sell_editor",
+            use_container_width=True,
+            column_config={
+                "fund_from": st.column_config.SelectboxColumn(
+                    "Fund",
+                    options=funds
+                )
+            }
     )
     sell_edit["action"] = "SELL"
     sell_edit["fund_to"] = None
@@ -709,6 +709,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
