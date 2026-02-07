@@ -448,7 +448,17 @@ with tab_port:
         ]).to_csv("transactions.csv", index=False)
 
     tx_df = pd.read_csv("transactions.csv")
+    # clean
+    tx_df["action"] = tx_df["action"].astype(str).str.strip().str.upper()
+    tx_df = tx_df.dropna(subset=["action"])
+    
+    for c in ["trade_date","settle_from","settle_to"]:
+        tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
+    # filters
+    buy_df = tx_df[tx_df["action"]=="BUY"].copy()
+    sell_df = tx_df[tx_df["action"]=="SELL"].copy()
+    switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
     # ================= Convert datetime columns =================
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
@@ -457,7 +467,6 @@ with tab_port:
 
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
-    buy_df = tx_df[tx_df["action"]=="BUY"].copy()
     buy_df["price_to"] = buy_df["price_to"].astype(float)
     buy_df["amount"]   = buy_df["amount"].astype(float)
                 
@@ -483,7 +492,6 @@ with tab_port:
 
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
-    sell_df = tx_df[tx_df["action"]=="SELL"].copy()
     sell_df["price_from"] = sell_df["price_from"].astype(float)
     sell_df["amount"]   = sell_df["amount"].astype(float)
     for df in [sell_df]:
@@ -512,7 +520,6 @@ with tab_port:
 
     # ---------------- SWITCH ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
-    switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
     switch_df["price_to"] = switch_df["price_to"].astype(float)
     switch_df["price_from"] = switch_df["price_from"].astype(float)
     switch_df["amount"]   = switch_df["amount"].astype(float)
@@ -785,6 +792,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
