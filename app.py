@@ -60,6 +60,11 @@ def save_data(df):
 
 def filter_by_tf(df, tf):
     end = df["date"].max()
+
+    if tf == "MTD":
+        start = end - pd.DateOffset(day=3)
+    elif tf == "YTD":
+        start = end - pd.DateOffset(month=1, day=1)
     if tf == "3M":
         start = end - pd.DateOffset(months=3)
     elif tf == "6M":
@@ -796,6 +801,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
