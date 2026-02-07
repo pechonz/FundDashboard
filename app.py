@@ -460,10 +460,6 @@ with tab_port:
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
     buy_df["price_to"] = buy_df["price_to"].astype(float)
     buy_df["amount"]   = buy_df["amount"].astype(float)
-    for df in [buy_df]:
-        for c in ["amount","price_from","price_to"]:
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
                 
     for c in ["trade_date","settle_to"]:
         buy_df[c] = buy_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
@@ -488,7 +484,8 @@ with tab_port:
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
     sell_df = tx_df[tx_df["action"]=="SELL"].copy()
-
+    sell_df["price_from"] = sell_df["price_from"].astype(float)
+    sell_df["amount"]   = sell_df["amount"].astype(float)
     for df in [sell_df]:
         for c in ["amount","price_from","price_to"]:
             if c in df.columns:
@@ -516,6 +513,10 @@ with tab_port:
     # ---------------- SWITCH ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
+    switch_df["price_to"] = switch_df["price_to"].astype(float)
+    switch_df["price_from"] = switch_df["price_from"].astype(float)
+    switch_df["amount"]   = switch_df["amount"].astype(float)
+    
     for df in [switch_df]:
         for c in ["amount","price_from","price_to"]:
             if c in df.columns:
@@ -739,6 +740,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
