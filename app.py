@@ -441,8 +441,77 @@ with tab_overview:
         )
 
         st.plotly_chart(fig, use_container_width=True)
-
 # ================= MENTAL PAIN TAB =================
+with tab_pain:
+    st.subheader(f"Mental Pain Map ({tf})")
+
+    # Filter funds with enough data
+    dfp = dff.dropna(subset=[
+        f"{tf}_DD_Duration_days",
+        f"{tf}_Worst_Rolling_%",
+        f"{tf}_MaxDD_%",
+        f"{tf}_Best_Rolling_%"
+    ]).copy()
+
+    if dfp.empty:
+        st.info("ไม่มีข้อมูลเพียงพอสำหรับแสดง Mental Pain Map")
+    else:
+        # Pain calculation (negative of Worst Rolling %)
+        dfp["Pain_%"] = -dfp[f"{tf}_Worst_Rolling_%"]
+
+        # Scatter plot
+        fig = px.scatter(
+            dfp,
+            x=f"{tf}_DD_Duration_days",
+            y=f"{tf}_Worst_Rolling_%",
+            size=dfp[f"{tf}_MaxDD_%"].abs(),
+            color=f"{tf}_Best_Rolling_%",
+            text="fund",
+            title="Mental Pain Map",
+            hover_data={
+                f"{tf}_DD_Duration_days": True,
+                f"{tf}_Worst_Rolling_%": True,
+                f"{tf}_MaxDD_%": True,
+                f"{tf}_Best_Rolling_%": True,
+            }
+        )
+
+        # Mean lines
+        xm = dfp[f"{tf}_DD_Duration_days"].mean()
+        ym = dfp[f"{tf}_Worst_Rolling_%"].mean()
+        fig.add_vline(x=xm, line_dash="dash", line_color="gray")
+        fig.add_hline(y=ym, line_dash="dash", line_color="gray")
+
+        # Annotations (เหมือนเดิม)
+        fig.add_annotation(x=xm*0.6, y=ym*0.6, text="🧘 Zen\nถือแล้วสบายใจ", showarrow=False)
+        fig.add_annotation(x=xm*0.6, y=ym*1.4, text="💥 Shock\nตกแรงแต่หายไว", showarrow=False)
+        fig.add_annotation(x=xm*1.4, y=ym*0.6, text="🐢 Slow Burn\nทรมานยาว", showarrow=False)
+        fig.add_annotation(x=xm*1.4, y=ym*1.4, text="🔥 Hell Mode\nใจพัง", showarrow=False)
+
+        fig.update_traces(textposition="top center")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.divider()
+
+        # ---------- Loss probability table ----------
+        loss_rows = []
+        for fund in funds:
+            g = nav_df[nav_df["fund"] == fund].sort_values("date")
+            nav_series = filter_by_timeframe(g.set_index("date")["nav"], tf)
+            if len(nav_series) >= 20:
+                ret = nav_series.pct_change().dropna()
+                roll = (1 + ret).rolling(252).apply(np.prod, raw=True) - 1
+                loss_rows.append({
+                    "fund": fund,
+                    "Loss_Prob_%": (roll < 0).mean() * 100
+                })
+
+        loss_df = pd.DataFrame(loss_rows)
+        if not loss_df.empty:
+            st.subheader("📉 Loss Probability (ความน่าจะเป็นขาดทุนช่วง Rolling 252 วัน)")
+            st.dataframe(loss_df.round(2), use_container_width=True)
+            
+# ================= PORT TAB =================
 with tab_port:
     st.subheader(f"Portfolio Overview ({tf})")
 
@@ -808,6 +877,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
