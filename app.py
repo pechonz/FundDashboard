@@ -449,6 +449,11 @@ with tab_port:
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
+    # ====== ตรงนี้ต้องเพิ่ม ======
+    edited_df = pd.concat(
+        [buy_edit, sell_edit, switch_edit],
+        ignore_index=True
+    )
     st.subheader("✏️ Transaction Manager (แยกตาราง)")
 
     # ---------------- BUY ----------------
@@ -679,6 +684,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
