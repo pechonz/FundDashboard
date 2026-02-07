@@ -16,6 +16,17 @@ nav_df = pd.read_csv(url)
 nav_df["date"] = pd.to_datetime(nav_df["date"], errors="coerce")
 nav_df = nav_df.sort_values(["fund","date"])
 
+tf_days = {
+    "MTD": 21,
+    "YTD": 252,
+    "1M": 21,
+    "3M": 63,
+    "6M": 126,
+    "1Y": 252,
+    "3Y": 252*3,
+    "5Y": 252*5,
+}
+
 # ================= FUNCTIONS =================
 @st.cache_data(ttl=30)
 def load_data():
@@ -495,22 +506,26 @@ with tab_pain:
         st.divider()
 
         # ---------- Loss probability table ----------
+        # ---------- Loss probability table ----------
+        # ---------- Loss probability table ----------
         loss_rows = []
+        window = tf_days.get(tf, 252)
+        
         for fund in funds:
             g = nav_df[nav_df["fund"] == fund].sort_values("date")
-            nav_series = filter_by_timeframe(g.set_index("date")["nav"], tf)
-            if len(nav_series) >= 20:
+            
+            nav_series = filter_by_timeframe(
+                g.set_index("date")["nav"], tf
+            )
+            
+            if len(nav_series) >= window:
                 ret = nav_series.pct_change().dropna()
-                roll = (1 + ret).rolling(252).apply(np.prod, raw=True) - 1
+                roll = (1 + ret).rolling(window).apply(np.prod, raw=True) - 1
+                
                 loss_rows.append({
                     "fund": fund,
                     "Loss_Prob_%": (roll < 0).mean() * 100
                 })
-
-        loss_df = pd.DataFrame(loss_rows)
-        if not loss_df.empty:
-            st.subheader("📉 Loss Probability (ความน่าจะเป็นขาดทุนช่วง Rolling 252 วัน)")
-            st.dataframe(loss_df.round(2), use_container_width=True)
             
 # ================= PORT TAB =================
 with tab_port:
@@ -878,6 +893,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
