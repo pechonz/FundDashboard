@@ -272,7 +272,9 @@ with tab_overview:
     # st.caption(f"ช่วงข้อมูล: {df_plot['date'].min().date()} → {df_plot['date'].max().date()}")
     df_plot = nav_df[nav_df["fund"].isin(dff["fund"])].copy()
     start, end, df_plot = filter_by_tf(df_plot, tf)
-
+    st.caption(
+        f"ช่วงข้อมูล: {start.strftime('%d %b %Y')} → {end.strftime('%d %b %Y')}"
+    )
     # ---------- NAV Curve ----------
     fig_nav = px.line(
         df_plot,
@@ -804,6 +806,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
