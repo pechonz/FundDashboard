@@ -390,14 +390,12 @@ with tab_port:
 
     tx_df = st.session_state["tx_store"]
 
-    # clean
     tx_df["action"] = tx_df["action"].astype(str).str.strip().str.upper()
     tx_df = tx_df.dropna(subset=["action"])
 
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
-    # filters
     buy_df    = tx_df[tx_df["action"]=="BUY"].copy()
     sell_df   = tx_df[tx_df["action"]=="SELL"].copy()
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
@@ -422,6 +420,7 @@ with tab_port:
     buy_edit["fund_from"] = None
     buy_edit["settle_from"] = None
     buy_edit["price_from"] = None
+    buy_edit["price_to"] = None
 
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
@@ -429,7 +428,7 @@ with tab_port:
         sell_df = pd.DataFrame(columns=["trade_date","fund_from","settle_from","amount"])
 
     sell_edit = st.data_editor(
-        sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
+        sell_df[["trade_date","fund_from","settle_from","amount"]],
         num_rows="dynamic",
         key="sell_editor",
         use_container_width=True,
@@ -441,14 +440,14 @@ with tab_port:
     sell_edit["fund_to"] = None
     sell_edit["settle_to"] = None
     sell_edit["price_to"] = None
+    sell_edit["price_from"] = None
 
     # ---------------- SWITCH ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
     if switch_df.empty:
         switch_df = pd.DataFrame(columns=[
             "trade_date","fund_from","fund_to",
-            "settle_from","settle_to","amount",
-            "price_from","price_to"
+            "settle_from","settle_to","amount"
         ])
 
     switch_edit = st.data_editor(
@@ -462,25 +461,30 @@ with tab_port:
         }
     )
     switch_edit["action"] = "SWITCH"
+    switch_edit["price_from"] = None
+    switch_edit["price_to"] = None
 
     # ================= COMBINE =================
     edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
     edited_df = edited_df[COLS]
 
-    # ================= AUTO FILL PRICE FROM NAV =================
+    for c in ["trade_date","settle_from","settle_to"]:
+        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
+
+    # ================= AUTO PRICE FROM NAV =================
     for i, row in edited_df.iterrows():
         d = row["trade_date"]
-    
+
         if row["action"] == "BUY":
             edited_df.at[i, "price_to"] = get_nav_price(
                 row["fund_to"], d, nav_df
             )
-    
+
         elif row["action"] == "SELL":
             edited_df.at[i, "price_from"] = get_nav_price(
                 row["fund_from"], d, nav_df
             )
-    
+
         elif row["action"] == "SWITCH":
             edited_df.at[i, "price_from"] = get_nav_price(
                 row["fund_from"], d, nav_df
@@ -489,10 +493,7 @@ with tab_port:
                 row["fund_to"], d, nav_df
             )
 
-    for c in ["trade_date","settle_from","settle_to"]:
-        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
-
-    # เก็บ draft ทุกครั้ง (auto-memory)
+    # auto memory
     st.session_state["tx_store"] = edited_df.copy()
 
     col1, col2 = st.columns(2)
@@ -500,7 +501,7 @@ with tab_port:
     with col1:
         if st.button("💾 Save"):
             edited_df.to_csv(FILE, index=False)
-            st.success("บันทึกลงไฟล์แล้ว (ไม่หายแน่นอน)")
+            st.success("บันทึกแล้ว (ราคาอ้างอิง NAV จริง)")
 
     with col2:
         if st.button("🗑️ Reset All"):
@@ -714,6 +715,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
