@@ -366,125 +366,54 @@ with tab_overview:
         st.plotly_chart(fig, use_container_width=True)
 
 # ================= MENTAL PAIN TAB =================
-with tab_pain:
-    st.subheader(f"Mental Pain Map ({tf})")
-
-    # Filter funds with enough data
-    dfp = dff.dropna(subset=[
-        f"{tf}_DD_Duration_days",
-        f"{tf}_Worst_Rolling_%",
-        f"{tf}_MaxDD_%",
-        f"{tf}_Best_Rolling_%"
-    ]).copy()
-
-    if dfp.empty:
-        st.info("ไม่มีข้อมูลเพียงพอสำหรับแสดง Mental Pain Map")
-    else:
-        # Pain calculation (negative of Worst Rolling %)
-        dfp["Pain_%"] = -dfp[f"{tf}_Worst_Rolling_%"]
-
-        # Scatter plot
-        fig = px.scatter(
-            dfp,
-            x=f"{tf}_DD_Duration_days",
-            y=f"{tf}_Worst_Rolling_%",
-            size=dfp[f"{tf}_MaxDD_%"].abs(),
-            color=f"{tf}_Best_Rolling_%",
-            text="fund",
-            title="Mental Pain Map",
-            hover_data={
-                f"{tf}_DD_Duration_days": True,
-                f"{tf}_Worst_Rolling_%": True,
-                f"{tf}_MaxDD_%": True,
-                f"{tf}_Best_Rolling_%": True,
-            }
-        )
-
-        # Mean lines
-        xm = dfp[f"{tf}_DD_Duration_days"].mean()
-        ym = dfp[f"{tf}_Worst_Rolling_%"].mean()
-        fig.add_vline(x=xm, line_dash="dash", line_color="gray")
-        fig.add_hline(y=ym, line_dash="dash", line_color="gray")
-
-        # Annotations (เหมือนเดิม)
-        fig.add_annotation(x=xm*0.6, y=ym*0.6, text="🧘 Zen\nถือแล้วสบายใจ", showarrow=False)
-        fig.add_annotation(x=xm*0.6, y=ym*1.4, text="💥 Shock\nตกแรงแต่หายไว", showarrow=False)
-        fig.add_annotation(x=xm*1.4, y=ym*0.6, text="🐢 Slow Burn\nทรมานยาว", showarrow=False)
-        fig.add_annotation(x=xm*1.4, y=ym*1.4, text="🔥 Hell Mode\nใจพัง", showarrow=False)
-
-        fig.update_traces(textposition="top center")
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.divider()
-
-        # ---------- Loss probability table ----------
-        loss_rows = []
-        for fund in funds:
-            g = nav_df[nav_df["fund"] == fund].sort_values("date")
-            nav_series = filter_by_timeframe(g.set_index("date")["nav"], tf)
-            if len(nav_series) >= 20:
-                ret = nav_series.pct_change().dropna()
-                roll = (1 + ret).rolling(252).apply(np.prod, raw=True) - 1
-                loss_rows.append({
-                    "fund": fund,
-                    "Loss_Prob_%": (roll < 0).mean() * 100
-                })
-
-        loss_df = pd.DataFrame(loss_rows)
-        if not loss_df.empty:
-            st.subheader("📉 Loss Probability (ความน่าจะเป็นขาดทุนช่วง Rolling 252 วัน)")
-            st.dataframe(loss_df.round(2), use_container_width=True)
-
 with tab_port:
     st.subheader(f"Portfolio Overview ({tf})")
 
-    # ================= Load transactions =================
-    if not os.path.exists("transactions.csv"):
-        pd.DataFrame(columns=[
-            "trade_date","action",
-            "fund_from","fund_to",
-            "settle_from","settle_to",
-            "amount","price_from","price_to"
-        ]).to_csv("transactions.csv", index=False)
+    FILE = "transactions.csv"
+    COLS = [
+        "trade_date","action",
+        "fund_from","fund_to",
+        "settle_from","settle_to",
+        "amount","price_from","price_to"
+    ]
 
-    tx_df = pd.read_csv("transactions.csv")
+    # ================= INIT STORAGE =================
+    if not os.path.exists(FILE):
+        pd.DataFrame(columns=COLS).to_csv(FILE, index=False)
+
+    if "tx_store" not in st.session_state:
+        st.session_state["tx_store"] = pd.read_csv(FILE)
+
+    tx_df = st.session_state["tx_store"]
+
     # clean
     tx_df["action"] = tx_df["action"].astype(str).str.strip().str.upper()
     tx_df = tx_df.dropna(subset=["action"])
-    
+
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
     # filters
-    buy_df = tx_df[tx_df["action"]=="BUY"].copy()
-    sell_df = tx_df[tx_df["action"]=="SELL"].copy()
+    buy_df    = tx_df[tx_df["action"]=="BUY"].copy()
+    sell_df   = tx_df[tx_df["action"]=="SELL"].copy()
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
-    # ================= Convert datetime columns =================
-    for c in ["trade_date","settle_from","settle_to"]:
-        tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
     st.subheader("✏️ Transaction Manager")
 
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
-    buy_df["price_to"] = buy_df["price_to"].astype(float)
-    buy_df["amount"]   = buy_df["amount"].astype(float)
-                
-    for c in ["trade_date","settle_to"]:
-        buy_df[c] = buy_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
+    if buy_df.empty:
+        buy_df = pd.DataFrame(columns=["trade_date","fund_to","settle_to","amount","price_to"])
+
     buy_edit = st.data_editor(
         buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
         num_rows="dynamic",
         key="buy_editor",
         use_container_width=True,
         column_config={
-            "fund_to": st.column_config.SelectboxColumn(
-                "Fund",
-                options=funds
-            )
+            "fund_to": st.column_config.SelectboxColumn("Fund", options=funds)
         }
     )
-        
     buy_edit["action"] = "BUY"
     buy_edit["fund_from"] = None
     buy_edit["settle_from"] = None
@@ -492,26 +421,17 @@ with tab_port:
 
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
-    sell_df["price_from"] = sell_df["price_from"].astype(float)
-    sell_df["amount"]   = sell_df["amount"].astype(float)
-    for df in [sell_df]:
-        for c in ["amount","price_from","price_to"]:
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
-    for c in ["trade_date","settle_from"]:
-        sell_df[c] = sell_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
+    if sell_df.empty:
+        sell_df = pd.DataFrame(columns=["trade_date","fund_from","settle_from","amount","price_from"])
 
     sell_edit = st.data_editor(
         sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
-            num_rows="dynamic",
-            key="sell_editor",
-            use_container_width=True,
-            column_config={
-                "fund_from": st.column_config.SelectboxColumn(
-                    "Fund",
-                    options=funds
-                )
-            }
+        num_rows="dynamic",
+        key="sell_editor",
+        use_container_width=True,
+        column_config={
+            "fund_from": st.column_config.SelectboxColumn("Fund", options=funds)
+        }
     )
     sell_edit["action"] = "SELL"
     sell_edit["fund_to"] = None
@@ -520,24 +440,12 @@ with tab_port:
 
     # ---------------- SWITCH ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
-    switch_df["price_to"] = switch_df["price_to"].astype(float)
-    switch_df["price_from"] = switch_df["price_from"].astype(float)
-    switch_df["amount"]   = switch_df["amount"].astype(float)
-    
-    for df in [switch_df]:
-        for c in ["amount","price_from","price_to"]:
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
     if switch_df.empty:
         switch_df = pd.DataFrame(columns=[
             "trade_date","fund_from","fund_to",
             "settle_from","settle_to","amount",
-            "price_from","price_to","action"
+            "price_from","price_to"
         ])
-
-    for c in ["trade_date","settle_from","settle_to"]:
-        switch_df[c] = pd.to_datetime(switch_df[c], errors="coerce")
-        switch_df[c] = switch_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
     switch_edit = st.data_editor(
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
@@ -545,46 +453,34 @@ with tab_port:
         key="switch_editor",
         use_container_width=True,
         column_config={
-            "fund_from": st.column_config.SelectboxColumn(
-                "From",
-                options=funds
-            ),
-            "fund_to": st.column_config.SelectboxColumn(
-                "To",
-                options=funds
-            )
+            "fund_from": st.column_config.SelectboxColumn("From", options=funds),
+            "fund_to": st.column_config.SelectboxColumn("To", options=funds)
         }
     )
     switch_edit["action"] = "SWITCH"
 
-    # ================= COMBINE ALL =================
-    edited_df = pd.concat(
-        [buy_edit, sell_edit, switch_edit],
-        ignore_index=True
-    )
+    # ================= COMBINE =================
+    edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
+    edited_df = edited_df[COLS]
 
-    # convert back to datetime
     for c in ["trade_date","settle_from","settle_to"]:
         edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
 
-    edited_df = edited_df[tx_df.columns]
+    # เก็บ draft ทุกครั้ง (auto-memory)
+    st.session_state["tx_store"] = edited_df.copy()
 
     col1, col2 = st.columns(2)
 
     with col1:
         if st.button("💾 Save"):
-            edited_df.to_csv("transactions.csv", index=False)
-            st.success("บันทึกแล้ว")
-            st.rerun()
-    
+            edited_df.to_csv(FILE, index=False)
+            st.success("บันทึกลงไฟล์แล้ว (ไม่หายแน่นอน)")
+
     with col2:
         if st.button("🗑️ Reset All"):
-            pd.DataFrame(columns=[
-                "trade_date","action",
-                "fund_from","fund_to",
-                "settle_from","settle_to",
-                "amount","price_from","price_to"
-            ]).to_csv("transactions.csv", index=False)
+            empty = pd.DataFrame(columns=COLS)
+            empty.to_csv(FILE, index=False)
+            st.session_state["tx_store"] = empty
             st.warning("ล้างข้อมูลทั้งหมดแล้ว")
             st.rerun()
 
@@ -792,6 +688,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
