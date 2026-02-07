@@ -264,7 +264,7 @@ with tab_overview:
 
     # ------------------- NAV / Drawdown / Z-Score -------------------
     st.subheader("📈 Fund NAV Curve + 📉 Drawdown + 🔥 Buy/Overheat Zone")
-    st.caption(f"ช่วงข้อมูล: {df_plot['date'].min().date()} → {df_plot['date'].max().date()}")
+    # st.caption(f"ช่วงข้อมูล: {df_plot['date'].min().date()} → {df_plot['date'].max().date()}")
     df_plot = nav_df[nav_df["fund"].isin(dff["fund"])].copy()
     df_plot = filter_by_tf(df_plot, tf)
 
@@ -796,6 +796,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
