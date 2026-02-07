@@ -560,7 +560,7 @@ with tab_port:
 
     edited_df = edited_df[tx_df.columns]
 
-   col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
     with col1:
         if st.button("💾 Save"):
@@ -738,6 +738,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
