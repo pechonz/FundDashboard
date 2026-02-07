@@ -542,6 +542,8 @@ with tab_port:
         key="buy_editor",
         use_container_width=True,
         column_config={
+            "trade_date": st.column_config.DateColumn("Trade Date"),
+            "settle_to":  st.column_config.DateColumn("Settle Date"),
             "fund_to": st.column_config.SelectboxColumn("Fund", options=funds)
         }
     )
@@ -761,5 +763,6 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
