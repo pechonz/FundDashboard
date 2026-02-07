@@ -461,15 +461,27 @@ with tab_port:
     for c in ["trade_date","settle_to"]:
         buy_df[c] = buy_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
-    buy_edit = st.data_editor(
-        buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
-        num_rows="dynamic",
-        key="buy_editor",
-        use_container_width=True,
-        column_config={
+        buy_edit = st.data_editor(
+            buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
+            num_rows="dynamic",
+            key="buy_editor",
+            use_container_width=True,
+            column_config={
             "fund_to": st.column_config.SelectboxColumn(
                 "Fund",
                 options=funds
+            ),
+            "amount": st.column_config.NumberColumn(
+                "Amount",
+                min_value=0,
+                step=100,
+                format="%.2f"
+            ),
+            "price_to": st.column_config.NumberColumn(
+                "NAV",
+                min_value=0,
+                step=0.01,
+                format="%.4f"   # รองรับ 4 ตำแหน่ง
             )
         }
     )
@@ -709,6 +721,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
