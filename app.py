@@ -65,7 +65,7 @@ def filter_by_tf(df, tf):
         start = end.replace(day=1)
     elif tf == "YTD":
         start = end.replace(month=1, day=1)
-    if tf == "3M":
+    elif tf == "3M":
         start = end - pd.DateOffset(months=3)
     elif tf == "6M":
         start = end - pd.DateOffset(months=6)
@@ -806,6 +806,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
