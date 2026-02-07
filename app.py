@@ -473,8 +473,6 @@ with tab_port:
                 )
             }
         )
-
-    )
     buy_edit["action"] = "BUY"
     buy_edit["fund_from"] = None
     buy_edit["settle_from"] = None
@@ -711,6 +709,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
