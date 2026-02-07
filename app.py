@@ -560,10 +560,24 @@ with tab_port:
 
     edited_df = edited_df[tx_df.columns]
 
-    if st.button("💾 Save"):
-        edited_df.to_csv("transactions.csv", index=False)
-        st.success("บันทึกแล้ว")
-        st.rerun()
+   col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("💾 Save"):
+            edited_df.to_csv("transactions.csv", index=False)
+            st.success("บันทึกแล้ว")
+            st.rerun()
+    
+    with col2:
+        if st.button("🗑️ Reset All"):
+            pd.DataFrame(columns=[
+                "trade_date","action",
+                "fund_from","fund_to",
+                "settle_from","settle_to",
+                "amount","price_from","price_to"
+            ]).to_csv("transactions.csv", index=False)
+            st.warning("ล้างข้อมูลทั้งหมดแล้ว")
+            st.rerun()
 
     st.divider()
 
@@ -724,6 +738,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
