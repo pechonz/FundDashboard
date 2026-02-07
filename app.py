@@ -270,7 +270,7 @@ with tab_overview:
     st.subheader(f"Overview ({tf})")
 
     # ------------------- NAV / Drawdown / Z-Score -------------------
-    st.subheader("📈 Fund NAV Curve + 📉 Drawdown + 🔥 Buy/Overheat Zone")
+    # st.subheader("📈 Fund NAV Curve + 📉 Drawdown + 🔥 Buy/Overheat Zone")
     # st.caption(f"ช่วงข้อมูล: {df_plot['date'].min().date()} → {df_plot['date'].max().date()}")
     df_plot = nav_df[nav_df["fund"].isin(dff["fund"])].copy()
     start, end, df_plot = filter_by_tf(df_plot, tf)
@@ -300,39 +300,6 @@ with tab_overview:
     )
     fig_nav.update_xaxes(range=[start, end])
     st.plotly_chart(fig_nav, use_container_width=True, height=300)
-
-    # ---------- Drawdown ----------
-    dd_all=[]
-    for f in dff["fund"]:
-        fdf = df_plot[df_plot["fund"]==f].copy()
-        fdf["cummax"]=fdf["nav"].cummax()
-        fdf["drawdown"]=(fdf["nav"]/fdf["cummax"]-1)*100
-        dd_all.append(fdf)
-    dd_df=pd.concat(dd_all)
-
-    fig_dd=px.line(
-        dd_df,
-        x="date",
-        y="drawdown",
-        color="fund",
-        title="📉 Drawdown Curve (%)",
-        labels={"drawdown":"Drawdown (%)", "date":"วันที่"}
-    )
-    fig_dd.update_traces(line=dict(width=2))
-    fig_dd.add_hline(y=0,line_dash="dash",line_color="black")
-    fig_dd.add_annotation(
-        x=dd_df['date'].min(),
-        y=dd_df["drawdown"].min(),
-        text="💥 Drawdown = % การลดลงจากจุดสูงสุด",
-        showarrow=False,
-        font=dict(size=12, color="red")
-    )
-    fig_dd.update_layout(
-        legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
-        margin=dict(t=50, b=80)
-    )
-    fig_dd.update_xaxes(range=[start, end])
-    st.plotly_chart(fig_dd, use_container_width=True, height=300)
 
     # ---------- Z-Score ----------
     win = min(60, len(fdf)//2)
@@ -372,6 +339,10 @@ with tab_overview:
     st.plotly_chart(fig_z, use_container_width=True, height=300)
 
     st.divider()
+
+# ================= MENTAL PAIN TAB =================
+with tab_pain:
+    st.subheader(f"Mental Pain Map ({tf})")
 
     # ------------------- Decision Engine & Risk vs Return -------------------
     ycol = f"{tf}_Return_%" if tf in ["MTD","YTD"] else f"{tf}_CAGR_%"
@@ -441,10 +412,7 @@ with tab_overview:
         )
 
         st.plotly_chart(fig, use_container_width=True)
-# ================= MENTAL PAIN TAB =================
-with tab_pain:
-    st.subheader(f"Mental Pain Map ({tf})")
-
+        
     # Filter funds with enough data
     dfp = dff.dropna(subset=[
         f"{tf}_DD_Duration_days",
@@ -453,6 +421,39 @@ with tab_pain:
         f"{tf}_Best_Rolling_%"
     ]).copy()
 
+    # ---------- Drawdown ----------
+    dd_all=[]
+    for f in dff["fund"]:
+        fdf = df_plot[df_plot["fund"]==f].copy()
+        fdf["cummax"]=fdf["nav"].cummax()
+        fdf["drawdown"]=(fdf["nav"]/fdf["cummax"]-1)*100
+        dd_all.append(fdf)
+    dd_df=pd.concat(dd_all)
+
+    fig_dd=px.line(
+        dd_df,
+        x="date",
+        y="drawdown",
+        color="fund",
+        title="📉 Drawdown Curve (%)",
+        labels={"drawdown":"Drawdown (%)", "date":"วันที่"}
+    )
+    fig_dd.update_traces(line=dict(width=2))
+    fig_dd.add_hline(y=0,line_dash="dash",line_color="black")
+    fig_dd.add_annotation(
+        x=dd_df['date'].min(),
+        y=dd_df["drawdown"].min(),
+        text="💥 Drawdown = % การลดลงจากจุดสูงสุด",
+        showarrow=False,
+        font=dict(size=12, color="red")
+    )
+    fig_dd.update_layout(
+        legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
+        margin=dict(t=50, b=80)
+    )
+    fig_dd.update_xaxes(range=[start, end])
+    st.plotly_chart(fig_dd, use_container_width=True, height=300)
+    
     if dfp.empty:
         st.info("ไม่มีข้อมูลเพียงพอสำหรับแสดง Mental Pain Map")
     else:
@@ -877,6 +878,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
