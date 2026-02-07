@@ -42,7 +42,7 @@ def save_data(df):
         ]
     )
     gc = gspread.authorize(creds)
-    sh = gc.open("fund_transactions")
+    sh = gc.open("transactions")
     ws = sh.sheet1
 
     ws.clear()
@@ -761,3 +761,4 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
