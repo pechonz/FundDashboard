@@ -459,7 +459,7 @@ with tab_port:
     st.markdown("### 🟢 BUY")
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
 
-    for df in [buy_df, sell_df, switch_df]:
+    for df in [buy_df]:
         for c in ["amount","price_from","price_to"]:
             if c in df.columns:
                 df[c] = pd.to_numeric(df[c], errors="coerce")
@@ -487,6 +487,11 @@ with tab_port:
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
     sell_df = tx_df[tx_df["action"]=="SELL"].copy()
+
+    for df in [sell_df]:
+        for c in ["amount","price_from","price_to"]:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
     for c in ["trade_date","settle_from"]:
         sell_df[c] = sell_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
@@ -510,6 +515,10 @@ with tab_port:
     # ---------------- SWITCH ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
+    for df in [switch_df]:
+        for c in ["amount","price_from","price_to"]:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
     if switch_df.empty:
         switch_df = pd.DataFrame(columns=[
             "trade_date","fund_from","fund_to",
@@ -715,6 +724,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
