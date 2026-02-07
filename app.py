@@ -535,6 +535,9 @@ with tab_port:
         st.info("ยังไม่มี Transaction")
         st.stop()
 
+    for c in ["amount","price_from","price_to"]:
+        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce")
+    
     pos_df = explode_transactions(edited_df)
     if len(pos_df) == 0:
         st.warning("Transaction ยังไม่สมบูรณ์")
@@ -684,6 +687,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
