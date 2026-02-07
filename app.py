@@ -15,15 +15,19 @@ nav_df = nav_df.sort_values(["fund","date"])
 # ================= FUNCTIONS =================
 
 # ================= NAV FUNCTION =================
-def get_nav_price(fund, date):
+def get_nav_price(fund, trade_date, nav_df):
+    if pd.isna(fund) or pd.isna(trade_date):
+        return None
+
     df = nav_df[
         (nav_df["fund"] == fund) &
-        (nav_df["date"] <= date)
-    ].sort_values("date", ascending=False)
+        (nav_df["date"] <= trade_date)
+    ].sort_values("date")
+
     if len(df) == 0:
         return None
-    return round(df.iloc[0]["nav"], 4)
 
+    return df.iloc[-1]["nav"]
 # ================= EXPLODE ENGINE =================
 def explode_transactions(tx_df):
     rows = []
@@ -403,10 +407,10 @@ with tab_port:
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
     if buy_df.empty:
-        buy_df = pd.DataFrame(columns=["trade_date","fund_to","settle_to","amount","price_to"])
+        buy_df = pd.DataFrame(columns=["trade_date","fund_to","settle_to","amount"])
 
     buy_edit = st.data_editor(
-        buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
+        buy_df[["trade_date","fund_to","settle_to","amount"]],
         num_rows="dynamic",
         key="buy_editor",
         use_container_width=True,
@@ -422,7 +426,7 @@ with tab_port:
     # ---------------- SELL ----------------
     st.markdown("### 🔴 SELL")
     if sell_df.empty:
-        sell_df = pd.DataFrame(columns=["trade_date","fund_from","settle_from","amount","price_from"])
+        sell_df = pd.DataFrame(columns=["trade_date","fund_from","settle_from","amount"])
 
     sell_edit = st.data_editor(
         sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
@@ -448,7 +452,7 @@ with tab_port:
         ])
 
     switch_edit = st.data_editor(
-        switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
+        switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount"]],
         num_rows="dynamic",
         key="switch_editor",
         use_container_width=True,
@@ -462,6 +466,28 @@ with tab_port:
     # ================= COMBINE =================
     edited_df = pd.concat([buy_edit, sell_edit, switch_edit], ignore_index=True)
     edited_df = edited_df[COLS]
+
+    # ================= AUTO FILL PRICE FROM NAV =================
+    for i, row in edited_df.iterrows():
+        d = row["trade_date"]
+    
+        if row["action"] == "BUY":
+            edited_df.at[i, "price_to"] = get_nav_price(
+                row["fund_to"], d, nav_df
+            )
+    
+        elif row["action"] == "SELL":
+            edited_df.at[i, "price_from"] = get_nav_price(
+                row["fund_from"], d, nav_df
+            )
+    
+        elif row["action"] == "SWITCH":
+            edited_df.at[i, "price_from"] = get_nav_price(
+                row["fund_from"], d, nav_df
+            )
+            edited_df.at[i, "price_to"] = get_nav_price(
+                row["fund_to"], d, nav_df
+            )
 
     for c in ["trade_date","settle_from","settle_to"]:
         edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
@@ -688,6 +714,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
