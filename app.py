@@ -564,6 +564,8 @@ with tab_port:
         key="sell_editor",
         use_container_width=True,
         column_config={
+            "trade_date":  st.column_config.DateColumn("Trade Date"),
+            "settle_from": st.column_config.DateColumn("Settle Date"),
             "fund_from": st.column_config.SelectboxColumn("Fund", options=funds)
         }
     )
@@ -587,8 +589,11 @@ with tab_port:
         key="switch_editor",
         use_container_width=True,
         column_config={
+            "trade_date":  st.column_config.DateColumn("Trade Date"),
+            "settle_from": st.column_config.DateColumn("Settle From"),
+            "settle_to":   st.column_config.DateColumn("Settle To"),
             "fund_from": st.column_config.SelectboxColumn("From", options=funds),
-            "fund_to": st.column_config.SelectboxColumn("To", options=funds)
+            "fund_to":   st.column_config.SelectboxColumn("To", options=funds)
         }
     )
     switch_edit["action"] = "SWITCH"
@@ -763,6 +768,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
