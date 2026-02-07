@@ -396,106 +396,111 @@ with tab_port:
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
+    # ================= COMBINE =================
     buy_df    = tx_df[tx_df["action"]=="BUY"].copy()
     sell_df   = tx_df[tx_df["action"]=="SELL"].copy()
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
 
+    edited_df = pd.concat([buy_df, sell_df, switch_df], ignore_index=True)
+    edited_df = edited_df[COLS]
+
+    for c in ["trade_date","settle_from","settle_to"]:
+        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
+
+    # ================= AUTO PRICE =================
+    for i, row in edited_df.iterrows():
+        d = row["trade_date"]
+        if row["action"] == "BUY":
+            edited_df.at[i, "price_to"] = get_nav_price(row["fund_to"], d, nav_df)
+        elif row["action"] == "SELL":
+            edited_df.at[i, "price_from"] = get_nav_price(row["fund_from"], d, nav_df)
+        elif row["action"] == "SWITCH":
+            edited_df.at[i, "price_from"] = get_nav_price(row["fund_from"], d, nav_df)
+            edited_df.at[i, "price_to"]   = get_nav_price(row["fund_to"], d, nav_df)
+
+    st.session_state["tx_store"] = edited_df.copy()
+
     # ================= Portfolio Engine =================
-    if len(edited_df) == 0:
-        st.info("ยังไม่มี Transaction")
-        st.stop()
+    if len(edited_df) > 0:
+        for c in ["amount","price_from","price_to"]:
+            edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce")
 
-    for c in ["amount","price_from","price_to"]:
-        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce")
-    
-    pos_df = explode_transactions(edited_df)
-    if len(pos_df) == 0:
-        st.warning("Transaction ยังไม่สมบูรณ์")
-        st.stop()
-        
-    # ================= Portfolio Summary =================
-    port = pos_df.groupby("fund")["units"].sum().reset_index()
-    port = port[port["fund"].isin(funds)]
+        pos_df = explode_transactions(edited_df)
 
-    latest_nav = nav_df.sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
-    port = port.merge(latest_nav, on="fund", how="left")
+        if len(pos_df) > 0:
+            # -------- SUMMARY --------
+            port = pos_df.groupby("fund")["units"].sum().reset_index()
+            port = port[port["fund"].isin(funds)]
 
-    port["current_value"] = port["units"] * port["nav"]
+            latest_nav = nav_df.sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
+            port = port.merge(latest_nav, on="fund", how="left")
 
-    cost = []
-    for f in port["fund"]:
-        buys = edited_df[edited_df["fund_to"] == f]
-        sells = edited_df[edited_df["fund_from"] == f]
-        cost.append(buys["amount"].sum() - sells["amount"].sum())
+            port["current_value"] = port["units"] * port["nav"]
 
-    port["amount"] = cost
-    port["profit"] = port["current_value"] - port["amount"]
-    port["profit_%"] = port["profit"] / port["amount"] * 100
+            cost = []
+            for f in port["fund"]:
+                buys = edited_df[edited_df["fund_to"] == f]
+                sells = edited_df[edited_df["fund_from"] == f]
+                cost.append(buys["amount"].sum() - sells["amount"].sum())
 
-    # ================= ADD TOTAL ROW =================
-    total_row = pd.DataFrame([{
-        "fund": "TOTAL",
-        "units": port["units"].sum(),
-        "nav": None,
-        "current_value": port["current_value"].sum(),
-        "amount": port["amount"].sum(),
-        "profit": port["profit"].sum(),
-        "profit_%": (
-            port["profit"].sum() / port["amount"].sum() * 100
-            if port["amount"].sum() != 0 else 0
-        )
-    }])
-    
-    port = pd.concat([port, total_row], ignore_index=True)
+            port["amount"] = cost
+            port["profit"] = port["current_value"] - port["amount"]
+            port["profit_%"] = port["profit"] / port["amount"] * 100
 
-    st.subheader("📊 Portfolio Summary")
-    st.dataframe(port.round(2), use_container_width=True)
+            # -------- TOTAL --------
+            total_row = pd.DataFrame([{
+                "fund": "TOTAL",
+                "units": port["units"].sum(),
+                "nav": None,
+                "current_value": port["current_value"].sum(),
+                "amount": port["amount"].sum(),
+                "profit": port["profit"].sum(),
+                "profit_%": (
+                    port["profit"].sum() / port["amount"].sum() * 100
+                    if port["amount"].sum() != 0 else 0
+                )
+            }])
+            port = pd.concat([port, total_row], ignore_index=True)
 
-    # ================= Prepare Volatility =================
-    nav_df_sorted = nav_df.sort_values(["fund","date"])
-    nav_df_sorted["ret"] = nav_df_sorted.groupby("fund")["nav"].pct_change()
-    
-    vol_df = nav_df_sorted.groupby("fund")["ret"].std().reset_index()
-    vol_df.columns = ["fund","vol"]
-    
-    # merge เข้า port
-    port = port.merge(vol_df, on="fund", how="left")
-    
-    # ================= Risk Weight =================
-    port["risk_weight"] = port["current_value"] * port["vol"]
-    
-    # ================= 2 COLUMN LAYOUT =================
-    col1, col2 = st.columns(2)
-    
-    port_no_total = port[port["fund"] != "TOTAL"]
-    
-    # -------- LEFT: Money Pie --------
-    with col1:
-        st.subheader("🥧 Money Allocation")
-        fig1 = px.pie(
-            port_no_total,
-            values="current_value",
-            names="fund",
-            title="สัดส่วนเงินลงทุนปัจจุบัน"
-        )
-        fig1.update_traces(textinfo="percent+label")
-        st.plotly_chart(fig1, use_container_width=True)
-        st.caption("สัดส่วนเงินอยู่ที่กองไหนมากที่สุด")
-    
-    # -------- RIGHT: Risk Pie --------
-    with col2:
-        st.subheader("⚠️ Risk Exposure")
-        fig2 = px.pie(
-            port_no_total,   # อย่าใช้ port เต็ม (มี TOTAL)
-            values="risk_weight",
-            names="fund",
-            title=f"สัดส่วนความเสี่ยง (Money × {tf} Volatility)"
-        )
-        fig2.update_traces(textinfo="percent+label")
-        st.plotly_chart(fig2, use_container_width=True)
-        st.caption("กองที่ slice ใหญ่ = กินความเสี่ยงพอร์ตมากที่สุด")
-    
-    st.divider()
+            # ================= SHOW TOP =================
+            st.subheader("📊 Portfolio Summary")
+            st.dataframe(port.round(2), use_container_width=True)
+
+            # -------- VOL & RISK --------
+            nav_df_sorted = nav_df.sort_values(["fund","date"])
+            nav_df_sorted["ret"] = nav_df_sorted.groupby("fund")["nav"].pct_change()
+
+            vol_df = nav_df_sorted.groupby("fund")["ret"].std().reset_index()
+            vol_df.columns = ["fund","vol"]
+
+            port = port.merge(vol_df, on="fund", how="left")
+            port["risk_weight"] = port["current_value"] * port["vol"]
+
+            port_no_total = port[port["fund"] != "TOTAL"]
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.subheader("🥧 Money Allocation")
+                fig1 = px.pie(
+                    port_no_total,
+                    values="current_value",
+                    names="fund"
+                )
+                fig1.update_traces(textinfo="percent+label")
+                st.plotly_chart(fig1, use_container_width=True)
+
+            with col2:
+                st.subheader("⚠️ Risk Exposure")
+                fig2 = px.pie(
+                    port_no_total,
+                    values="risk_weight",
+                    names="fund"
+                )
+                fig2.update_traces(textinfo="percent+label")
+                st.plotly_chart(fig2, use_container_width=True)
+
+            st.divider()
     
     st.subheader("✏️ Transaction Manager")
 
