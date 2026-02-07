@@ -617,7 +617,33 @@ with tab_port:
 
     st.subheader("📊 Portfolio Summary")
     st.dataframe(port.round(2), use_container_width=True)
-            
+
+    # ================= Pie 1: Value Allocation =================
+    st.subheader("🥧 Value Allocation")
+    
+    fig_value = px.pie(
+        port,
+        names="fund",
+        values="current_value",
+        title="Portfolio by Value"
+    )
+    st.plotly_chart(fig_value, use_container_width=True)
+    
+    # ================= Risk Mapping =================
+    port["risk"] = port["fund"].map(risk_map).fillna("Unknown")
+    
+    # ================= Pie 2: Risk Allocation =================
+    st.subheader("⚠️ Risk Allocation")
+    
+    risk_df = port.groupby("risk")["current_value"].sum().reset_index()
+    
+    fig_risk = px.pie(
+        risk_df,
+        names="risk",
+        values="current_value",
+        title="Portfolio by Risk"
+    )
+    st.plotly_chart(fig_risk, use_container_width=True)
 # ================= DIVERSIFICATION =================
 with tab_diver:
     st.subheader(f"🔗 Diversification Analysis ({tf})")
@@ -740,6 +766,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
