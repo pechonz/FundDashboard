@@ -577,40 +577,38 @@ with tab_port:
     # ================= Risk Weight =================
     port["risk_weight"] = port["current_value"] * port["vol"]
     
-    # ================= Money Pie =================
-    st.subheader("🥧 Money Allocation (เงินอยู่ตรงไหน)")
+    # ================= 2 COLUMN LAYOUT =================
+    col1, col2 = st.columns(2)
     
     port_no_total = port[port["fund"] != "TOTAL"]
     
-    fig1 = px.pie(
-        port_no_total,
-        values="current_value",
-        names="fund",
-        title="สัดส่วนเงินลงทุนปัจจุบัน"
-    )
-    fig1.update_traces(textinfo="percent+label")
-    st.plotly_chart(fig1, use_container_width=True)
+    # -------- LEFT: Money Pie --------
+    with col1:
+        st.subheader("🥧 Money Allocation")
+        fig1 = px.pie(
+            port_no_total,
+            values="current_value",
+            names="fund",
+            title="สัดส่วนเงินลงทุนปัจจุบัน"
+        )
+        fig1.update_traces(textinfo="percent+label")
+        st.plotly_chart(fig1, use_container_width=True)
+        st.caption("สัดส่วนเงินอยู่ที่กองไหนมากที่สุด")
     
-    st.caption("แสดงว่าสัดส่วนเงินของคุณอยู่ที่กองไหนมากที่สุด")
+    # -------- RIGHT: Risk Pie --------
+    with col2:
+        st.subheader("⚠️ Risk Exposure")
+        fig2 = px.pie(
+            port_no_total,   # อย่าใช้ port เต็ม (มี TOTAL)
+            values="risk_weight",
+            names="fund",
+            title=f"สัดส่วนความเสี่ยง (Money × {tf} Volatility)"
+        )
+        fig2.update_traces(textinfo="percent+label")
+        st.plotly_chart(fig2, use_container_width=True)
+        st.caption("กองที่ slice ใหญ่ = กินความเสี่ยงพอร์ตมากที่สุด")
+    
     st.divider()
-    
-    # ================= Risk Pie =================
-    st.subheader("⚠️ Risk Exposure (ความเสี่ยงมาจากไหน)")
-    
-    fig2 = px.pie(
-        port,
-        values="risk_weight",
-        names="fund",
-        title=f"สัดส่วนความเสี่ยง (Money × {tf} Volatility)"
-    )
-    fig2.update_traces(textinfo="percent+label")
-    st.plotly_chart(fig2, use_container_width=True)
-    
-    st.caption("""
-    คำนวณจาก:
-    เงินลงทุน × ความผันผวนจริงจาก NAV 5 ปี  
-    กองที่ slice ใหญ่ = กินความเสี่ยงพอร์ตมากที่สุด
-    """)
 # ================= DIVERSIFICATION =================
 with tab_diver:
     st.subheader(f"🔗 Diversification Analysis ({tf})")
@@ -733,6 +731,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
