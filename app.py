@@ -458,6 +458,12 @@ with tab_port:
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
+
+    for df in [buy_df, sell_df, switch_df]:
+        for c in ["amount","price_from","price_to"]:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+                
     for c in ["trade_date","settle_to"]:
         buy_df[c] = buy_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
     buy_edit = st.data_editor(
@@ -709,6 +715,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
