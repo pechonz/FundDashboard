@@ -469,7 +469,7 @@ with tab_port:
         column_config={
             "fund_to": st.column_config.SelectboxColumn(
                 "Fund",
-                options=fund_list
+                options=funds
             )
         }
     )
@@ -492,7 +492,7 @@ with tab_port:
         column_config={
             "fund_from": st.column_config.SelectboxColumn(
                 "Fund",
-                options=fund_list
+                options=funds
             )
         }
     )
@@ -523,11 +523,11 @@ with tab_port:
         column_config={
             "fund_from": st.column_config.SelectboxColumn(
                 "From",
-                options=fund_list
+                options=funds
             ),
             "fund_to": st.column_config.SelectboxColumn(
                 "To",
-                options=fund_list
+                options=funds
             )
         }
     )
@@ -709,6 +709,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
