@@ -77,7 +77,7 @@ def filter_by_tf(df, tf):
         start = end - pd.DateOffset(years=5)
     else:  # ALL
         start = df["date"].min()
-    return df[df["date"] >= start]
+    return start, end, df[df["date"] >= start]
     
 # ================= NAV FUNCTION =================
 def get_nav_price(fund, trade_date, nav_df):
@@ -271,7 +271,7 @@ with tab_overview:
     st.subheader("📈 Fund NAV Curve + 📉 Drawdown + 🔥 Buy/Overheat Zone")
     # st.caption(f"ช่วงข้อมูล: {df_plot['date'].min().date()} → {df_plot['date'].max().date()}")
     df_plot = nav_df[nav_df["fund"].isin(dff["fund"])].copy()
-    df_plot = filter_by_tf(df_plot, tf)
+    start, end, df_plot = filter_by_tf(df_plot, tf)
 
     # ---------- NAV Curve ----------
     fig_nav = px.line(
@@ -804,6 +804,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
