@@ -5,6 +5,8 @@ import numpy as np
 import os
 import itertools
 from datetime import datetime
+import streamlit as st
+st.write(st.secrets["gcp"]["client_email"])
 
 # ================= LOAD NAV =================
 url = "https://raw.githubusercontent.com/pechonz/FundDashboard/main/fund_nav_5y.csv"
@@ -736,6 +738,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
