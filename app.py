@@ -30,9 +30,13 @@ def explode_transactions(tx_df):
 
     for _, r in tx_df.iterrows():
 
+        amount = pd.to_numeric(r["amount"], errors="coerce")
+        p_from = pd.to_numeric(r["price_from"], errors="coerce")
+        p_to   = pd.to_numeric(r["price_to"], errors="coerce")
+
         # BUY
-        if r["action"] == "BUY" and pd.notna(r["price_to"]):
-            units = r["amount"] / r["price_to"]
+        if r["action"] == "BUY" and pd.notna(p_to) and pd.notna(amount):
+            units = amount / p_to
             rows.append({
                 "date": r["settle_to"],
                 "fund": r["fund_to"],
@@ -40,25 +44,25 @@ def explode_transactions(tx_df):
             })
 
         # SELL
-        elif r["action"] == "SELL" and pd.notna(r["price_from"]):
-            units = - r["amount"] / r["price_from"]
+        elif r["action"] == "SELL" and pd.notna(p_from) and pd.notna(amount):
+            units = - amount / p_from
             rows.append({
                 "date": r["settle_from"],
                 "fund": r["fund_from"],
                 "units": units
             })
 
-        # SWITCH (รองรับทั้ง SWITCH และ SWAP)
+        # SWITCH / SWAP
         elif r["action"] in ["SWITCH","SWAP"]:
-            if pd.notna(r["price_from"]):
-                units_out = - r["amount"] / r["price_from"]
+            if pd.notna(p_from) and pd.notna(amount):
+                units_out = - amount / p_from
                 rows.append({
                     "date": r["settle_from"],
                     "fund": r["fund_from"],
                     "units": units_out
                 })
-            if pd.notna(r["price_to"]):
-                units_in = r["amount"] / r["price_to"]
+            if pd.notna(p_to) and pd.notna(amount):
+                units_in = amount / p_to
                 rows.append({
                     "date": r["settle_to"],
                     "fund": r["fund_to"],
@@ -680,6 +684,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
