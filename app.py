@@ -458,7 +458,8 @@ with tab_port:
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
     buy_df = tx_df[tx_df["action"]=="BUY"].copy()
-
+    buy_df["price_to"] = buy_df["price_to"].astype(float)
+    buy_df["amount"]   = buy_df["amount"].astype(float)
     for df in [buy_df]:
         for c in ["amount","price_from","price_to"]:
             if c in df.columns:
@@ -738,6 +739,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
