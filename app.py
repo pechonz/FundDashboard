@@ -60,7 +60,7 @@ def save_data(df):
 
 def filter_by_tf(df, tf):
     end = df["date"].max()
-
+    
     if tf == "MTD":
         start = end.replace(day=1)
     elif tf == "YTD":
@@ -294,6 +294,7 @@ with tab_overview:
         legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
         margin=dict(t=50, b=80)
     )
+    fig.update_xaxes(range=[start, end])
     st.plotly_chart(fig_nav, use_container_width=True, height=300)
 
     # ---------- Drawdown ----------
@@ -326,6 +327,7 @@ with tab_overview:
         legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
         margin=dict(t=50, b=80)
     )
+    fig.update_xaxes(range=[start, end])
     st.plotly_chart(fig_dd, use_container_width=True, height=300)
 
     # ---------- Z-Score ----------
@@ -362,6 +364,7 @@ with tab_overview:
         legend=dict(orientation="h", y=-0.25, x=0, xanchor="left"),
         margin=dict(t=50, b=80)
     )
+    fig.update_xaxes(range=[start, end])
     st.plotly_chart(fig_z, use_container_width=True, height=300)
 
     st.divider()
@@ -801,6 +804,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
