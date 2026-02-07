@@ -449,12 +449,7 @@ with tab_port:
     for c in ["trade_date","settle_from","settle_to"]:
         tx_df[c] = pd.to_datetime(tx_df[c], errors="coerce")
 
-    # ====== ตรงนี้ต้องเพิ่ม ======
-    edited_df = pd.concat(
-        [buy_edit, sell_edit, switch_edit],
-        ignore_index=True
-    )
-    st.subheader("✏️ Transaction Manager (แยกตาราง)")
+    st.subheader("✏️ Transaction Manager")
 
     # ---------------- BUY ----------------
     st.markdown("### 🟢 BUY")
@@ -490,8 +485,7 @@ with tab_port:
     sell_edit["settle_to"] = None
     sell_edit["price_to"] = None
 
-    # ---------------- SWITCH / SWAP ----------------
-    # ---------------- SWITCH / SWAP ----------------
+    # ---------------- SWITCH ----------------
     st.markdown("### 🔄 SWITCH / SWAP")
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
     if switch_df.empty:
@@ -500,28 +494,29 @@ with tab_port:
             "settle_from","settle_to","amount",
             "price_from","price_to","action"
         ])
-    
-    # แปลงทุก column วันเป็น date picker
+
     for c in ["trade_date","settle_from","settle_to"]:
-        # ปลอดภัยกับ NaT
         switch_df[c] = pd.to_datetime(switch_df[c], errors="coerce")
         switch_df[c] = switch_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
-    
+
     switch_edit = st.data_editor(
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
         num_rows="dynamic",
         key="switch_editor",
         use_container_width=True
     )
-    
-    # กำหนด action
     switch_edit["action"] = "SWITCH"
-    
-    # หลังแก้ไข แปลงกลับเป็น datetime64[ns]
-    for c in ["trade_date","settle_from","settle_to"]:
-        switch_edit[c] = pd.to_datetime(switch_edit[c], errors="coerce")
 
-    # เรียง column ให้เหมือนต้นฉบับ
+    # ================= COMBINE ALL =================
+    edited_df = pd.concat(
+        [buy_edit, sell_edit, switch_edit],
+        ignore_index=True
+    )
+
+    # convert back to datetime
+    for c in ["trade_date","settle_from","settle_to"]:
+        edited_df[c] = pd.to_datetime(edited_df[c], errors="coerce")
+
     edited_df = edited_df[tx_df.columns]
 
     if st.button("💾 Save"):
@@ -533,22 +528,23 @@ with tab_port:
 
     # ================= Portfolio Engine =================
     if len(edited_df) == 0:
-        st.info("ยังไม่มี Transaction → เพิ่มรายการก่อน")
+        st.info("ยังไม่มี Transaction")
         st.stop()
 
     pos_df = explode_transactions(edited_df)
     if len(pos_df) == 0:
-        st.warning("Transaction ยังไม่สมบูรณ์ (ขาดราคา / วันที่)")
+        st.warning("Transaction ยังไม่สมบูรณ์")
         st.stop()
 
     # ================= Portfolio Summary =================
     port = pos_df.groupby("fund")["units"].sum().reset_index()
     port = port[port["fund"].isin(funds)]
-    latest_nav = nav_df[nav_df["fund"].isin(funds)].sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
+
+    latest_nav = nav_df.sort_values("date").groupby("fund").tail(1)[["fund","nav"]]
     port = port.merge(latest_nav, on="fund", how="left")
+
     port["current_value"] = port["units"] * port["nav"]
 
-    # cost basis
     cost = []
     for f in port["fund"]:
         buys = edited_df[edited_df["fund_to"] == f]
@@ -560,7 +556,7 @@ with tab_port:
     port["profit_%"] = port["profit"] / port["amount"] * 100
 
     st.subheader("📊 Portfolio Summary")
-    st.dataframe(port.round(4), use_container_width=True)
+    st.dataframe(port.round(2), use_container_width=True)
             
 # ================= DIVERSIFICATION =================
 with tab_diver:
@@ -684,6 +680,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
