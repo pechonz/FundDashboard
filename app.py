@@ -57,6 +57,23 @@ def save_data(df):
 
     ws.clear()
     ws.update([df2.columns.tolist()] + df2.fillna("").values.tolist())
+
+def filter_by_tf(df, tf):
+    end = df["date"].max()
+    if tf == "3M":
+        start = end - pd.DateOffset(months=3)
+    elif tf == "6M":
+        start = end - pd.DateOffset(months=6)
+    elif tf == "1Y":
+        start = end - pd.DateOffset(years=1)
+    elif tf == "3Y":
+        start = end - pd.DateOffset(years=3)
+    elif tf == "5Y":
+        start = end - pd.DateOffset(years=5)
+    else:  # ALL
+        start = df["date"].min()
+    return df[df["date"] >= start]
+    
 # ================= NAV FUNCTION =================
 def get_nav_price(fund, trade_date, nav_df):
     if pd.isna(fund) or pd.isna(trade_date):
@@ -247,8 +264,9 @@ with tab_overview:
 
     # ------------------- NAV / Drawdown / Z-Score -------------------
     st.subheader("📈 Fund NAV Curve + 📉 Drawdown + 🔥 Buy/Overheat Zone")
-
+    st.caption(f"ช่วงข้อมูล: {df_plot['date'].min().date()} → {df_plot['date'].max().date()}")
     df_plot = nav_df[nav_df["fund"].isin(dff["fund"])].copy()
+    df_plot = filter_by_tf(df_plot, tf)
 
     # ---------- NAV Curve ----------
     fig_nav = px.line(
@@ -306,7 +324,7 @@ with tab_overview:
     st.plotly_chart(fig_dd, use_container_width=True, height=300)
 
     # ---------- Z-Score ----------
-    win = 60
+    win = min(60, len(fdf)//2)
     z_all=[]
     for f in dff["fund"]:
         fdf = df_plot[df_plot["fund"]==f].copy()
@@ -778,6 +796,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
