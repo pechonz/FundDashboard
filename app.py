@@ -470,18 +470,6 @@ with tab_port:
             "fund_to": st.column_config.SelectboxColumn(
                 "Fund",
                 options=funds
-            ),
-            "amount": st.column_config.NumberColumn(
-                "Amount",
-                min_value=0,
-                step=100,
-                format="%.2f"
-            ),
-            "price_to": st.column_config.NumberColumn(
-                "NAV",
-                min_value=0,
-                step=0.01,
-                format="%.4f"   # รองรับ 4 ตำแหน่ง
             )
         }
     )
@@ -721,6 +709,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
