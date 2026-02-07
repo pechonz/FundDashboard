@@ -34,6 +34,9 @@ def load_data():
 
 
 def save_data(df):
+    import gspread
+    from google.oauth2.service_account import Credentials
+
     creds = Credentials.from_service_account_info(
         st.secrets["gcp"],
         scopes=[
@@ -41,12 +44,19 @@ def save_data(df):
             "https://www.googleapis.com/auth/drive"
         ]
     )
+
     gc = gspread.authorize(creds)
-    sh = gc.open("transactions")
+    sh = gc.open("fund_transactions")
     ws = sh.sheet1
 
+    # 🔴 FIX สำคัญ: แปลง datetime → string ก่อนส่ง
+    df2 = df.copy()
+    for c in ["trade_date","settle_from","settle_to"]:
+        if c in df2.columns:
+            df2[c] = pd.to_datetime(df2[c], errors="coerce").dt.strftime("%Y-%m-%d")
+
     ws.clear()
-    ws.update([df.columns.tolist()] + df.fillna("").values.tolist())
+    ws.update([df2.columns.tolist()] + df2.fillna("").values.tolist())
 # ================= NAV FUNCTION =================
 def get_nav_price(fund, trade_date, nav_df):
     if pd.isna(fund) or pd.isna(trade_date):
@@ -768,6 +778,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
