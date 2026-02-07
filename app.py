@@ -302,7 +302,7 @@ with tab_overview:
     st.plotly_chart(fig_nav, use_container_width=True, height=300)
 
     # ---------- Z-Score ----------
-    win = min(60, len(fdf)//2)
+    win = min(60, len(df_plot)//2)
     z_all=[]
     for f in dff["fund"]:
         fdf = df_plot[df_plot["fund"]==f].copy()
@@ -878,6 +878,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
