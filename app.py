@@ -400,6 +400,19 @@ with tab_port:
     sell_df   = tx_df[tx_df["action"]=="SELL"].copy()
     switch_df = tx_df[tx_df["action"].isin(["SWITCH","SWAP"])].copy()
 
+    # ================= Portfolio Engine =================
+    if len(edited_df) == 0:
+        st.info("ยังไม่มี Transaction")
+        st.stop()
+
+    for c in ["amount","price_from","price_to"]:
+        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce")
+    
+    pos_df = explode_transactions(edited_df)
+    if len(pos_df) == 0:
+        st.warning("Transaction ยังไม่สมบูรณ์")
+        st.stop()
+        
     # ================= Portfolio Summary =================
     port = pos_df.groupby("fund")["units"].sum().reset_index()
     port = port[port["fund"].isin(funds)]
@@ -596,19 +609,6 @@ with tab_port:
             st.rerun()
 
     st.divider()
-
-    # ================= Portfolio Engine =================
-    if len(edited_df) == 0:
-        st.info("ยังไม่มี Transaction")
-        st.stop()
-
-    for c in ["amount","price_from","price_to"]:
-        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce")
-    
-    pos_df = explode_transactions(edited_df)
-    if len(pos_df) == 0:
-        st.warning("Transaction ยังไม่สมบูรณ์")
-        st.stop()
 # ================= DIVERSIFICATION =================
 with tab_diver:
     st.subheader(f"🔗 Diversification Analysis ({tf})")
@@ -731,6 +731,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
