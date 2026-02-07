@@ -465,7 +465,13 @@ with tab_port:
         buy_df[["trade_date","fund_to","settle_to","amount","price_to"]],
         num_rows="dynamic",
         key="buy_editor",
-        use_container_width=True
+        use_container_width=True,
+        column_config={
+            "fund_to": st.column_config.SelectboxColumn(
+                "Fund",
+                options=fund_list
+            )
+        }
     )
     buy_edit["action"] = "BUY"
     buy_edit["fund_from"] = None
@@ -479,10 +485,16 @@ with tab_port:
         sell_df[c] = sell_df[c].apply(lambda x: x.date() if pd.notna(x) else None)
 
     sell_edit = st.data_editor(
-        sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
+    sell_df[["trade_date","fund_from","settle_from","amount","price_from"]],
         num_rows="dynamic",
         key="sell_editor",
-        use_container_width=True
+        use_container_width=True,
+        column_config={
+            "fund_from": st.column_config.SelectboxColumn(
+                "Fund",
+                options=fund_list
+            )
+        }
     )
     sell_edit["action"] = "SELL"
     sell_edit["fund_to"] = None
@@ -507,7 +519,17 @@ with tab_port:
         switch_df[["trade_date","fund_from","fund_to","settle_from","settle_to","amount","price_from","price_to"]],
         num_rows="dynamic",
         key="switch_editor",
-        use_container_width=True
+        use_container_width=True,
+        column_config={
+            "fund_from": st.column_config.SelectboxColumn(
+                "From",
+                options=fund_list
+            ),
+            "fund_to": st.column_config.SelectboxColumn(
+                "To",
+                options=fund_list
+            )
+        }
     )
     switch_edit["action"] = "SWITCH"
 
@@ -687,6 +709,7 @@ with tab_diver:
         > 1.4 = กระจายดี  
         > 1.6+ = กระจายระดับกองทุน
         """)
+
 
 
 
